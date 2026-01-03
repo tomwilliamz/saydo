@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { PersonStats, PERSON_COLORS } from '@/lib/types'
 
 interface LeaderboardCardProps {
@@ -16,7 +17,9 @@ export default function LeaderboardCard({ stats, rank }: LeaderboardCardProps) {
       <div className="text-4xl">{MEDALS[rank] || ''}</div>
 
       <div className="flex-1">
-        <div className={`text-2xl font-bold ${colors.text}`}>{stats.person}</div>
+        <Link href={`/${stats.person.toLowerCase()}`} className={`text-2xl font-bold ${colors.text} hover:underline`}>
+          {stats.person}
+        </Link>
 
         <div className="mt-3 flex items-center gap-4">
           <div className="flex-1 h-6 bg-gray-200 rounded-full overflow-hidden">

@@ -1,0 +1,617 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import confetti from 'canvas-confetti'
+import DateNav from '@/components/DateNav'
+import TaskRow from '@/components/TaskRow'
+import DurationModal from '@/components/DurationModal'
+import { DailyTask, Person, ALL_PERSONS } from '@/lib/types'
+import {
+  formatDateForDB,
+  getTomorrow,
+  getYesterday,
+  isPast,
+  parseDate,
+} from '@/lib/utils'
+
+interface DailyResponse {
+  date: string
+  weekOfCycle: number
+  dayOfWeek: number
+  tasks: DailyTask[]
+}
+
+// Color configs for 3D effects
+const CHART_COLORS = {
+  Thomas: { main: '#3B82F6', gradient: ['#60A5FA', '#2563EB', '#1E40AF'] },
+  Ivor: { main: '#10B981', gradient: ['#34D399', '#059669', '#047857'] },
+  Axel: { main: '#F59E0B', gradient: ['#FBBF24', '#D97706', '#B45309'] },
+}
+
+export default function PersonPage() {
+  const params = useParams()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const dateParam = searchParams.get('date')
+
+  // Validate and normalize person param
+  const personParam = (params.person as string)?.toLowerCase()
+  const person = ALL_PERSONS.find((p) => p.toLowerCase() === personParam) as Person | undefined
+
+  const [currentDate, setCurrentDate] = useState<Date>(() => {
+    if (dateParam) {
+      return parseDate(dateParam)
+    }
+    return new Date()
+  })
+
+  const [tasks, setTasks] = useState<DailyTask[]>([])
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [durationModal, setDurationModal] = useState<{
+    isOpen: boolean
+    task: DailyTask | null
+    elapsedMinutes: number
+  }>({ isOpen: false, task: null, elapsedMinutes: 0 })
+
+  const fetchTasks = useCallback(async (date: Date) => {
+    if (!person) return
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/daily?date=${formatDateForDB(date)}`)
+      const data: DailyResponse = await response.json()
+      // Filter tasks for this person only
+      const personTasks = data.tasks.filter((t) => t.person === person)
+      setTasks(personTasks)
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [person])
+
+  useEffect(() => {
+    fetchTasks(currentDate)
+  }, [currentDate, fetchTasks])
+
+  // If invalid person, show 404
+  if (!person) {
+    notFound()
+  }
+
+  const colors = CHART_COLORS[person]
+
+  const handleDateChange = (newDate: Date) => {
+    setCurrentDate(newDate)
+    router.push(`/${person.toLowerCase()}?date=${formatDateForDB(newDate)}`, { scroll: false })
+  }
+
+  // Optimistic update helper
+  const updateTaskLocally = (activityId: string, updates: Partial<DailyTask['completion']>) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.activity.id !== activityId) return t
+
+        const baseCompletion = t.completion ?? {
+          id: 'temp-' + Date.now(),
+          activity_id: activityId,
+          person,
+          date: formatDateForDB(currentDate),
+          status: 'started' as const,
+          started_at: null,
+          completed_at: null,
+          elapsed_ms: null,
+          created_at: new Date().toISOString(),
+        }
+
+        return {
+          ...t,
+          completion: {
+            ...baseCompletion,
+            ...updates,
+            elapsed_ms: updates?.elapsed_ms ?? baseCompletion.elapsed_ms,
+          },
+        }
+      })
+    )
+  }
+
+  const removeCompletionLocally = (activityId: string) => {
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.activity.id === activityId ? { ...t, completion: null } : t
+      )
+    )
+  }
+
+  const handleStart = async (task: DailyTask) => {
+    const now = new Date().toISOString()
+    updateTaskLocally(task.activity.id, {
+      status: 'started',
+      started_at: now,
+    })
+    setSelectedTaskId(task.activity.id)
+
+    try {
+      await fetch('/api/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_id: task.activity.id,
+          person: task.person,
+          date: formatDateForDB(currentDate),
+          status: 'started',
+          started_at: now,
+        }),
+      })
+    } catch (error) {
+      console.error('Failed to start task:', error)
+      fetchTasks(currentDate)
+    }
+  }
+
+  const handleStop = async (task: DailyTask) => {
+    if (!task.completion?.started_at) return
+
+    const now = new Date().toISOString()
+    const startedAt = new Date(task.completion.started_at).getTime()
+    const stoppedAt = new Date(now).getTime()
+    const elapsedMs = stoppedAt - startedAt
+    const previousElapsed = task.completion.elapsed_ms || 0
+    const totalElapsed = previousElapsed + elapsedMs
+
+    updateTaskLocally(task.activity.id, {
+      status: 'stopped',
+      started_at: null,
+      elapsed_ms: totalElapsed,
+    })
+
+    try {
+      await fetch('/api/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_id: task.activity.id,
+          person: task.person,
+          date: formatDateForDB(currentDate),
+          status: 'stopped',
+          started_at: null,
+          elapsed_ms: totalElapsed,
+        }),
+      })
+    } catch (error) {
+      console.error('Failed to stop task:', error)
+      fetchTasks(currentDate)
+    }
+  }
+
+  const handleResume = async (task: DailyTask) => {
+    const now = new Date().toISOString()
+    updateTaskLocally(task.activity.id, {
+      status: 'started',
+      started_at: now,
+    })
+    setSelectedTaskId(task.activity.id)
+
+    try {
+      await fetch('/api/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_id: task.activity.id,
+          person: task.person,
+          date: formatDateForDB(currentDate),
+          status: 'started',
+          started_at: now,
+          elapsed_ms: task.completion?.elapsed_ms || 0,
+        }),
+      })
+    } catch (error) {
+      console.error('Failed to resume task:', error)
+      fetchTasks(currentDate)
+    }
+  }
+
+  const triggerConfetti = () => {
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { x: 0.1, y: 0.6 },
+    })
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { x: 0.9, y: 0.6 },
+    })
+  }
+
+  const handleDone = async (task: DailyTask) => {
+    let totalElapsedMs = task.completion?.elapsed_ms || 0
+    if (task.completion?.started_at) {
+      const startedAt = new Date(task.completion.started_at).getTime()
+      const stoppedAt = Date.now()
+      totalElapsedMs += stoppedAt - startedAt
+    }
+
+    const now = new Date().toISOString()
+
+    const remainingIncompleteTasks = tasks.filter(
+      (t) => t.activity.id !== task.activity.id &&
+             t.completion?.status !== 'done' &&
+             t.completion?.status !== 'skipped'
+    )
+    const isLastTask = remainingIncompleteTasks.length === 0
+
+    updateTaskLocally(task.activity.id, {
+      status: 'done',
+      completed_at: now,
+      started_at: null,
+      elapsed_ms: totalElapsedMs || null,
+    })
+    setSelectedTaskId(null)
+
+    if (isLastTask) {
+      triggerConfetti()
+    }
+
+    try {
+      await fetch('/api/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_id: task.activity.id,
+          person: task.person,
+          date: formatDateForDB(currentDate),
+          status: 'done',
+          started_at: null,
+          completed_at: now,
+          elapsed_ms: totalElapsedMs || null,
+        }),
+      })
+    } catch (error) {
+      console.error('Failed to complete task:', error)
+      fetchTasks(currentDate)
+    }
+  }
+
+  const handleEditDuration = (task: DailyTask) => {
+    const elapsedMinutes = task.completion?.elapsed_ms
+      ? Math.round(task.completion.elapsed_ms / 60000)
+      : 0
+    setDurationModal({
+      isOpen: true,
+      task,
+      elapsedMinutes,
+    })
+  }
+
+  const handleDurationConfirm = async (minutes: number) => {
+    const task = durationModal.task
+    if (!task) return
+
+    const now = new Date().toISOString()
+    const elapsedMs = minutes * 60000
+
+    updateTaskLocally(task.activity.id, {
+      status: 'done',
+      completed_at: now,
+      elapsed_ms: elapsedMs,
+    })
+    setSelectedTaskId(null)
+    setDurationModal({ isOpen: false, task: null, elapsedMinutes: 0 })
+
+    try {
+      await fetch('/api/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_id: task.activity.id,
+          person: task.person,
+          date: formatDateForDB(currentDate),
+          status: 'done',
+          started_at: task.completion?.started_at || null,
+          completed_at: now,
+          elapsed_ms: elapsedMs,
+        }),
+      })
+    } catch (error) {
+      console.error('Failed to complete task:', error)
+      fetchTasks(currentDate)
+    }
+  }
+
+  const handleDurationCancel = () => {
+    setDurationModal({ isOpen: false, task: null, elapsedMinutes: 0 })
+  }
+
+  const handleSkip = async (task: DailyTask) => {
+    updateTaskLocally(task.activity.id, {
+      status: 'skipped',
+    })
+    setSelectedTaskId(null)
+
+    try {
+      await fetch('/api/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_id: task.activity.id,
+          person: task.person,
+          date: formatDateForDB(currentDate),
+          status: 'skipped',
+        }),
+      })
+    } catch (error) {
+      console.error('Failed to skip task:', error)
+      fetchTasks(currentDate)
+    }
+  }
+
+  const handleUndo = async (task: DailyTask) => {
+    if (!task.completion?.id) return
+
+    const completionId = task.completion.id
+    removeCompletionLocally(task.activity.id)
+
+    try {
+      await fetch(`/api/completions/${completionId}`, {
+        method: 'DELETE',
+      })
+    } catch (error) {
+      console.error('Failed to undo:', error)
+      fetchTasks(currentDate)
+    }
+  }
+
+  const handleReset = async (task: DailyTask) => {
+    if (!task.completion?.id) return
+
+    const completionId = task.completion.id
+    removeCompletionLocally(task.activity.id)
+    setSelectedTaskId(null)
+
+    try {
+      await fetch(`/api/completions/${completionId}`, {
+        method: 'DELETE',
+      })
+    } catch (error) {
+      console.error('Failed to reset:', error)
+      fetchTasks(currentDate)
+    }
+  }
+
+  const handleRowClick = (task: DailyTask) => {
+    if (selectedTaskId === task.activity.id) {
+      setSelectedTaskId(null)
+    } else {
+      setSelectedTaskId(task.activity.id)
+    }
+  }
+
+  const incompleteTasks = tasks.filter((t) => t.completion?.status !== 'done' && t.completion?.status !== 'skipped')
+  const completedTasks = tasks.filter((t) => t.completion?.status === 'done' || t.completion?.status === 'skipped')
+
+  const doneCount = tasks.filter((t) => t.completion?.status === 'done').length
+  const totalCount = tasks.length
+  const isPastDate = isPast(currentDate)
+  const percentage = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      {/* Animated background particles */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div
+          className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse opacity-20"
+          style={{ backgroundColor: colors.main }}
+        />
+        <div
+          className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse opacity-10"
+          style={{ backgroundColor: colors.gradient[0], animationDelay: '1s' }}
+        />
+      </div>
+
+      {/* Sticky header with person name and date nav */}
+      <div className="sticky top-0 z-40">
+        {/* Person header */}
+        <div
+          className="text-white px-6 py-4 pb-12 relative overflow-hidden"
+          style={{
+            background: `linear-gradient(135deg, ${colors.gradient[1]}, ${colors.gradient[2]})`,
+          }}
+        >
+          {/* Glow effect */}
+          <div
+            className="absolute inset-0 opacity-30"
+            style={{
+              background: `radial-gradient(circle at 50% 0%, ${colors.gradient[0]}, transparent 60%)`,
+            }}
+          />
+
+          <div className="max-w-5xl mx-auto relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <Link
+                href="/"
+                className="text-white/70 hover:text-white text-sm transition-colors"
+              >
+                &larr; Switch person
+              </Link>
+              <div className="inline-flex rounded-full bg-black/20 px-3 py-1 backdrop-blur-sm">
+                <Link
+                  href="/leaderboard"
+                  className="text-white/70 hover:text-white text-sm transition-colors px-2"
+                >
+                  Trends
+                </Link>
+                <span className="text-white/30">|</span>
+                <Link
+                  href="/admin"
+                  className="text-white/70 hover:text-white text-sm transition-colors px-2"
+                >
+                  Admin
+                </Link>
+              </div>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <h1 className="text-5xl font-bold drop-shadow-lg">{person}</h1>
+              <div
+                className="text-5xl font-black px-5 py-2 rounded-2xl"
+                style={{
+                  background: 'rgba(0,0,0,0.3)',
+                  boxShadow: `0 0 30px ${colors.main}44`,
+                }}
+              >
+                {percentage}%
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Date navigation */}
+        <div
+          className="px-6 shadow-xl rounded-t-[23%] relative z-10 -mt-8"
+          style={{
+            background: 'linear-gradient(135deg, rgb(30,41,59), rgb(15,23,42))',
+            borderTop: '1px solid rgba(255,255,255,0.1)',
+          }}
+        >
+          <div className="max-w-5xl mx-auto">
+            <DateNav
+              currentDate={currentDate}
+              onPrevious={() => handleDateChange(getYesterday(currentDate))}
+              onNext={() => handleDateChange(getTomorrow(currentDate))}
+              onToday={() => handleDateChange(new Date())}
+              onDateSelect={handleDateChange}
+              darkMode
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Task list */}
+      <div className="flex-1 pb-32 relative z-10">
+        <div className="max-w-5xl mx-auto py-4 px-6">
+          {loading ? (
+            <div
+              className="rounded-2xl p-8 text-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
+                border: '1px solid rgba(255,255,255,0.1)',
+              }}
+            >
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-transparent mb-4" style={{ borderColor: `${colors.main} transparent ${colors.main} ${colors.main}` }} />
+              <p className="text-gray-400">Loading tasks...</p>
+            </div>
+          ) : tasks.length === 0 ? (
+            <div
+              className="rounded-2xl p-8 text-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
+                border: '1px solid rgba(255,255,255,0.1)',
+              }}
+            >
+              <p className="text-gray-400">No tasks scheduled for this day.</p>
+            </div>
+          ) : (
+            <>
+              {/* Incomplete tasks */}
+              {incompleteTasks.length > 0 && (
+                <div
+                  className="rounded-2xl overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
+                    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}
+                >
+                  {incompleteTasks.map((task) => (
+                    <TaskRow
+                      key={task.activity.id}
+                      task={task}
+                      isPastDate={isPastDate}
+                      isExpanded={selectedTaskId === task.activity.id || task.completion?.status === 'started'}
+                      onRowClick={() => handleRowClick(task)}
+                      onStart={() => handleStart(task)}
+                      onStop={() => handleStop(task)}
+                      onResume={() => handleResume(task)}
+                      onDone={() => handleDone(task)}
+                      onSkip={() => handleSkip(task)}
+                      onUndo={() => handleUndo(task)}
+                      onReset={() => handleReset(task)}
+                      darkMode
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Completed tasks */}
+              {completedTasks.length > 0 && (
+                <div
+                  className={`rounded-2xl overflow-hidden ${incompleteTasks.length > 0 ? 'mt-6' : ''}`}
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(30,41,59,0.4), rgba(15,23,42,0.6))',
+                    boxShadow: '0 15px 30px -12px rgba(0,0,0,0.2)',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                  }}
+                >
+                  {completedTasks.map((task) => (
+                    <TaskRow
+                      key={task.activity.id}
+                      task={task}
+                      isPastDate={isPastDate}
+                      isExpanded={selectedTaskId === task.activity.id}
+                      onRowClick={() => handleRowClick(task)}
+                      onStart={() => handleStart(task)}
+                      onStop={() => handleStop(task)}
+                      onResume={() => handleResume(task)}
+                      onDone={() => handleDone(task)}
+                      onSkip={() => handleSkip(task)}
+                      onUndo={() => handleUndo(task)}
+                      onReset={() => handleReset(task)}
+                      onEditDuration={() => handleEditDuration(task)}
+                      darkMode
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Duration Modal */}
+      <DurationModal
+        isOpen={durationModal.isOpen}
+        initialMinutes={durationModal.elapsedMinutes}
+        activityName={durationModal.task?.activity.name || ''}
+        onConfirm={handleDurationConfirm}
+        onCancel={handleDurationCancel}
+      />
+
+      {/* Bottom gradient fade */}
+      <div
+        className="pointer-events-none fixed bottom-16 left-0 right-0 h-8"
+        style={{
+          background: 'linear-gradient(to top, rgba(17,24,39,1), transparent)',
+        }}
+      />
+
+      {/* Bottom accent bar */}
+      <div
+        className="h-16 fixed bottom-0 left-0 right-0"
+        style={{
+          background: `linear-gradient(90deg, ${colors.gradient[0]}, ${colors.main}, ${colors.gradient[2]})`,
+        }}
+      >
+        <div
+          className="h-12 rounded-b-[23%]"
+          style={{
+            background: 'linear-gradient(135deg, rgba(17,24,39,1), rgba(31,41,55,1))',
+          }}
+        />
+      </div>
+    </div>
+  )
+}

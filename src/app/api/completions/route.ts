@@ -22,6 +22,7 @@ export async function POST(request: Request) {
         status: body.status,
         started_at: body.started_at,
         completed_at: body.completed_at,
+        elapsed_ms: body.elapsed_ms ?? null,
       })
       .eq('id', existing.id)
       .select()
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
         status: body.status,
         started_at: body.started_at || null,
         completed_at: body.completed_at || null,
+        elapsed_ms: body.elapsed_ms ?? null,
       })
       .select()
       .single()

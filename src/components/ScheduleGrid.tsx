@@ -18,11 +18,11 @@ interface ScheduleGridProps {
 const PERSON_CYCLE: (PersonOrEveryone | null)[] = [null, 'Thomas', 'Ivor', 'Axel', 'Everyone']
 
 const PERSON_COLORS: Record<string, string> = {
-  T: 'bg-blue-100 text-blue-800',
-  I: 'bg-green-100 text-green-800',
-  A: 'bg-orange-100 text-orange-800',
-  E: 'bg-purple-100 text-purple-800',
-  '-': 'bg-gray-50 text-gray-400',
+  T: 'bg-blue-500/30 text-blue-300 border border-blue-500/40',
+  I: 'bg-green-500/30 text-green-300 border border-green-500/40',
+  A: 'bg-orange-500/30 text-orange-300 border border-orange-500/40',
+  E: 'bg-purple-500/30 text-purple-300 border border-purple-500/40',
+  '-': 'bg-gray-700/30 text-gray-500 border border-gray-600/30',
 }
 
 export default function ScheduleGrid({
@@ -75,15 +75,15 @@ export default function ScheduleGrid({
   return (
     <div className="overflow-x-auto">
       {/* Week selector */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-6">
         {[1, 2, 3, 4].map((week) => (
           <button
             key={week}
             onClick={() => setSelectedWeek(week)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-5 py-2 rounded-xl font-medium transition-all ${
               selectedWeek === week
-                ? 'bg-gray-900 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100 border'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-gray-700/50 text-gray-400 hover:text-white hover:bg-gray-600/50 border border-gray-600/50'
             }`}
           >
             Week {week}
@@ -92,16 +92,16 @@ export default function ScheduleGrid({
       </div>
 
       {/* Grid */}
-      <table className="w-full border-collapse bg-white rounded-lg shadow">
+      <table className="w-full border-collapse">
         <thead>
-          <tr className="border-b">
-            <th className="text-left p-3 font-medium text-gray-700 w-48">
+          <tr className="border-b border-white/10">
+            <th className="text-left p-3 font-medium text-gray-300 w-48">
               Activity
             </th>
             {DAY_NAMES.map((day, index) => (
               <th
                 key={day}
-                className="p-3 font-medium text-gray-700 text-center w-14"
+                className="p-3 font-medium text-gray-300 text-center w-14"
               >
                 {day}
               </th>
@@ -111,17 +111,17 @@ export default function ScheduleGrid({
         <tbody>
           {Object.entries(activityGroups).map(([type, typeActivities]) => (
             <>
-              <tr key={type} className="bg-gray-50">
+              <tr key={type} className="bg-white/5">
                 <td
                   colSpan={8}
-                  className="p-2 font-semibold text-gray-600 text-sm"
+                  className="p-2 font-semibold text-gray-400 text-sm"
                 >
                   {type}
                 </td>
               </tr>
               {typeActivities.map((activity) => (
-                <tr key={activity.id} className="border-b border-gray-100">
-                  <td className="p-3 text-sm text-gray-800">{activity.name}</td>
+                <tr key={activity.id} className="border-b border-white/5">
+                  <td className="p-3 text-sm text-gray-200">{activity.name}</td>
                   {DAY_NAMES.map((_, dayIndex) => {
                     const value = getScheduleValue(
                       activity.id,
@@ -134,7 +134,7 @@ export default function ScheduleGrid({
                           onClick={() =>
                             handleCellClick(activity.id, selectedWeek, dayIndex)
                           }
-                          className={`w-10 h-10 rounded font-medium text-sm transition-colors hover:ring-2 hover:ring-gray-300 ${PERSON_COLORS[value]}`}
+                          className={`w-10 h-10 rounded-lg font-medium text-sm transition-all hover:scale-110 hover:shadow-lg ${PERSON_COLORS[value]}`}
                         >
                           {value}
                         </button>
@@ -149,33 +149,33 @@ export default function ScheduleGrid({
       </table>
 
       {/* Legend */}
-      <div className="mt-4 flex gap-4 text-sm text-gray-600">
-        <span className="flex items-center gap-1">
-          <span className="w-6 h-6 rounded bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-medium">
+      <div className="mt-6 flex gap-4 text-sm text-gray-400">
+        <span className="flex items-center gap-2">
+          <span className="w-6 h-6 rounded-lg bg-blue-500/30 text-blue-300 border border-blue-500/40 flex items-center justify-center text-xs font-medium">
             T
           </span>
           Thomas
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-6 h-6 rounded bg-green-100 text-green-800 flex items-center justify-center text-xs font-medium">
+        <span className="flex items-center gap-2">
+          <span className="w-6 h-6 rounded-lg bg-green-500/30 text-green-300 border border-green-500/40 flex items-center justify-center text-xs font-medium">
             I
           </span>
           Ivor
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-6 h-6 rounded bg-orange-100 text-orange-800 flex items-center justify-center text-xs font-medium">
+        <span className="flex items-center gap-2">
+          <span className="w-6 h-6 rounded-lg bg-orange-500/30 text-orange-300 border border-orange-500/40 flex items-center justify-center text-xs font-medium">
             A
           </span>
           Axel
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-6 h-6 rounded bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-medium">
+        <span className="flex items-center gap-2">
+          <span className="w-6 h-6 rounded-lg bg-purple-500/30 text-purple-300 border border-purple-500/40 flex items-center justify-center text-xs font-medium">
             E
           </span>
           Everyone
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-6 h-6 rounded bg-gray-50 text-gray-400 flex items-center justify-center text-xs font-medium">
+        <span className="flex items-center gap-2">
+          <span className="w-6 h-6 rounded-lg bg-gray-700/30 text-gray-500 border border-gray-600/30 flex items-center justify-center text-xs font-medium">
             -
           </span>
           Not scheduled

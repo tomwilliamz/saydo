@@ -36,37 +36,44 @@ export default function ActivityForm({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+      <div
+        className="rounded-2xl p-6 w-full max-w-md"
+        style={{
+          background: 'linear-gradient(135deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98))',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
+          border: '1px solid rgba(255,255,255,0.1)',
+        }}
+      >
+        <h2 className="text-xl font-bold text-white mb-4">
           {activity ? 'Edit Activity' : 'Add Activity'}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Name
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Type
             </label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value as ActivityType)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
             >
               {ACTIVITY_TYPES.map((t) => (
-                <option key={t} value={t}>
+                <option key={t} value={t} className="bg-gray-800">
                   {t}
                 </option>
               ))}
@@ -74,27 +81,27 @@ export default function ActivityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Default Minutes
             </label>
             <input
               type="number"
               value={defaultMinutes}
               onChange={(e) => setDefaultMinutes(parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
               min={1}
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Description (optional)
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
               rows={3}
             />
           </div>
@@ -105,7 +112,7 @@ export default function ActivityForm({
                 <button
                   type="button"
                   onClick={onDelete}
-                  className="px-4 py-2 text-red-600 hover:text-red-800 font-medium"
+                  className="px-4 py-2 text-red-400 hover:text-red-300 font-medium transition-colors"
                 >
                   Delete
                 </button>
@@ -115,13 +122,16 @@ export default function ActivityForm({
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                className="px-4 py-2 text-gray-400 hover:text-white font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600"
+                className="px-6 py-2 text-white rounded-xl font-bold
+                  bg-gradient-to-r from-blue-500 to-purple-600
+                  hover:from-blue-600 hover:to-purple-700
+                  shadow-lg shadow-blue-500/30 transition-all"
               >
                 {activity ? 'Save' : 'Add'}
               </button>

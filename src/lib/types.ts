@@ -4,7 +4,7 @@ export type Person = 'Thomas' | 'Ivor' | 'Axel'
 
 export type PersonOrEveryone = Person | 'Everyone'
 
-export type CompletionStatus = 'started' | 'done' | 'blocked' | 'skipped'
+export type CompletionStatus = 'started' | 'stopped' | 'done' | 'skipped'
 
 export interface Activity {
   id: string
@@ -31,6 +31,7 @@ export interface Completion {
   status: CompletionStatus
   started_at: string | null
   completed_at: string | null
+  elapsed_ms: number | null // Accumulated time in milliseconds (for stop/resume)
   created_at: string
 }
 
@@ -80,3 +81,10 @@ export const TYPE_COLORS: Record<ActivityType, string> = {
 
 // All persons array for iteration
 export const ALL_PERSONS: Person[] = ['Thomas', 'Ivor', 'Axel']
+
+// Person avatars (stored in /public/avatars/)
+export const PERSON_AVATARS: Record<Person, string> = {
+  Thomas: '/avatars/thomas.jpg',
+  Ivor: '/avatars/ivor.jpg',
+  Axel: '/avatars/axel.jpg',
+}

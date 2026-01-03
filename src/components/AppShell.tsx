@@ -3,13 +3,22 @@
 import { usePathname } from 'next/navigation'
 import Nav from './Nav'
 
+// Person routes that have their own immersive header
+const PERSON_ROUTES = ['/thomas', '/ivor', '/axel']
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const showNav = !pathname.startsWith('/login') && !pathname.startsWith('/auth')
+
+  // Hide nav for login, auth, home page, and person-specific pages
+  const hideNav =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/auth') ||
+    pathname === '/' ||
+    PERSON_ROUTES.some((route) => pathname.startsWith(route))
 
   return (
     <>
-      {showNav && <Nav />}
+      {!hideNav && <Nav />}
       {children}
     </>
   )
