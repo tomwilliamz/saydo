@@ -8,7 +8,16 @@ Say Do Tracker is a family activity tracking application designed for shared hou
 
 - **Say**: Tasks scheduled for a person on a given day
 - **Do**: Tasks actually completed
-- **Say/Do Ratio**: Percentage of scheduled tasks completed (only "Done" counts; "Blocked" and "Skipped" count against)
+- **Say/Do Ratio**: Percentage of scheduled tasks completed (only "Done" counts; "Skipped" counts against)
+
+### Design Theme
+
+The app uses a **fancy dark theme** with:
+- Dark gradient backgrounds (`from-gray-900 via-gray-800 to-gray-900`)
+- Animated pulsing background particles
+- Glass-morphism cards with subtle borders and shadows
+- Person-specific color gradients (Blue for Thomas, Green for Ivor, Orange for Axel)
+- Gradient buttons with glow effects
 
 ---
 
@@ -23,6 +32,8 @@ Say Do Tracker is a family activity tracking application designed for shared hou
 | Auth | Supabase Auth (Google OAuth) |
 | Hosting | Vercel |
 | Package Manager | npm |
+| Charts | Recharts |
+| Effects | canvas-confetti |
 
 ---
 
@@ -31,11 +42,12 @@ Say Do Tracker is a family activity tracking application designed for shared hou
 ```
 /src
 ├── app/                          # Next.js App Router pages
-│   ├── page.tsx                  # Daily view (main page)
+│   ├── page.tsx                  # Home page (person selector + progress)
+│   ├── [person]/page.tsx         # Person-specific daily task view
 │   ├── layout.tsx                # Root layout with AppShell
 │   ├── globals.css               # Global styles + Tailwind
 │   ├── login/page.tsx            # Google OAuth login
-│   ├── leaderboard/page.tsx      # Monthly Say/Do ratios
+│   ├── leaderboard/page.tsx      # Trends with area chart
 │   ├── admin/page.tsx            # Schedule & activity management
 │   ├── auth/callback/route.ts    # OAuth callback handler
 │   └── api/                      # API routes
@@ -44,18 +56,21 @@ Say Do Tracker is a family activity tracking application designed for shared hou
 │       ├── daily/                # Daily task fetching
 │       ├── completions/          # Task completion tracking
 │       ├── leaderboard/          # Stats calculation
+│       ├── stats/                # Period-based stats (today/week/month/all)
+│       ├── trends/               # Historical trend data for charts
 │       └── settings/             # App settings
 ├── components/                   # React components
 │   ├── AppShell.tsx              # Conditional nav wrapper
 │   ├── Nav.tsx                   # Top navigation bar
-│   ├── DateNav.tsx               # Date navigation controls
+│   ├── DateNav.tsx               # Date navigation controls (supports darkMode)
 │   ├── FilterButtons.tsx         # Person filter (All/Thomas/Ivor/Axel)
-│   ├── TaskRow.tsx               # Individual task with actions
-│   ├── Timer.tsx                 # Live countdown timer
+│   ├── TaskRow.tsx               # Individual task with actions (supports darkMode)
+│   ├── Timer.tsx                 # Live elapsed timer (counts up from started_at)
+│   ├── DurationModal.tsx         # Numpad modal for editing task duration
 │   ├── PersonBadge.tsx           # Colored person indicator
 │   ├── LeaderboardCard.tsx       # Person stats card
-│   ├── ScheduleGrid.tsx          # 4-week schedule editor
-│   └── ActivityForm.tsx          # Add/edit activity modal
+│   ├── ScheduleGrid.tsx          # 4-week schedule editor (dark themed)
+│   └── ActivityForm.tsx          # Add/edit activity modal (dark themed)
 ├── lib/                          # Shared utilities
 │   ├── supabase/                 # Supabase clients
 │   │   ├── client.ts             # Browser client
@@ -65,12 +80,16 @@ Say Do Tracker is a family activity tracking application designed for shared hou
 │   └── utils.ts                  # Date/cycle calculations
 └── middleware.ts                 # Next.js middleware (auth)
 
+/public
+└── avatars/                      # Person avatar images (thomas.jpg, ivor.jpg, axel.jpg)
+
 /supabase
 ├── config.toml                   # Supabase local config
 └── migrations/                   # Database migrations
     ├── 20250102000001_initial_schema.sql
     ├── 20250102000002_seed_activities.sql
-    └── 20250102000003_seed_schedule.sql
+    ├── 20250102000003_seed_schedule.sql
+    └── 20250103000001_add_elapsed_ms.sql
 ```
 
 ---
@@ -116,6 +135,7 @@ Tracks task completion status for each person/date.
 | status | text | `started`, `done`, `blocked`, `skipped` |
 | started_at | timestamptz | When "Start" was clicked |
 | completed_at | timestamptz | When "Done" was clicked |
+| elapsed_ms | bigint | Accumulated time in milliseconds (supports pause/resume) |
 | created_at | timestamptz | Record creation time |
 
 **Unique constraint**: `(activity_id, person, date)`
@@ -293,6 +313,60 @@ Stats are sorted by ratio descending.
 
 ---
 
+### Stats
+
+#### `GET /api/stats?period=today|week|month|all`
+Returns Say/Do stats for each person over a specific time period.
+
+**Query Parameters**:
+- `period`: `today` (default), `week`, `month`, or `all`
+
+**Response**:
+```json
+{
+  "period": "week",
+  "startDate": "2025-01-06",
+  "endDate": "2025-01-10",
+  "stats": [
+    {"person": "Thomas", "done": 12, "total": 15, "ratio": 0.8},
+    {"person": "Ivor", "done": 10, "total": 14, "ratio": 0.71},
+    {"person": "Axel", "done": 8, "total": 13, "ratio": 0.62}
+  ]
+}
+```
+
+---
+
+### Trends
+
+#### `GET /api/trends?granularity=day|week&days=30`
+Returns historical trend data for charting Say/Do ratios over time.
+
+**Query Parameters**:
+- `granularity`: `day` (default) or `week`
+- `days`: Number of days back to look (default: 30)
+
+**Response**:
+```json
+{
+  "granularity": "day",
+  "days": 30,
+  "trends": [
+    {
+      "person": "Thomas",
+      "data": [
+        {"label": "Jan 6", "date": "2025-01-06", "ratio": 0.85, "done": 6, "total": 7},
+        {"label": "Jan 7", "date": "2025-01-07", "ratio": 1.0, "done": 5, "total": 5}
+      ]
+    }
+  ]
+}
+```
+
+Used by the Leaderboard page to render area charts.
+
+---
+
 ### Settings
 
 #### `GET /api/settings`
@@ -320,14 +394,25 @@ Update a setting (upsert).
 
 ## UI Components
 
-### Daily View (`/`)
+### Home Page (`/`)
 
-The main interface showing today's tasks.
+Person selector landing page with daily progress overview.
 
 **Features**:
+- Person avatars in circular frames with gradient borders
+- Per-person progress rings showing daily completion percentage
+- Period selector (Today/Week/Month/All)
+- Confetti celebration when all tasks are completed
+- Dark theme with animated pulsing background particles
+
+### Person Task View (`/[person]`)
+
+Individual person's daily task management view.
+
+**Features**:
+- Sticky header with person name and avatar
 - Date navigation (previous/next day, jump to today)
-- Person filter (All / Thomas / Ivor / Axel)
-- Task list with status indicators
+- Task list with status indicators and person-specific color theme
 - Action buttons based on state:
 
 | State | Actions Available |
@@ -335,34 +420,40 @@ The main interface showing today's tasks.
 | Not started (today) | Start, Blocked, Skip |
 | Not started (past) | Done, Blocked, Skip |
 | Started | Timer display, Done |
-| Done | "Done in X mins", Undo |
+| Done | "Done in X mins" (tappable to edit), Undo |
 | Blocked | "Blocked", Undo |
 | Skipped | "Skipped", Undo |
 
-**Timer**: Client-side only, calculated from `started_at`. Only persists to DB on "Done" click.
+**Timer**:
+- Client-side countdown from `started_at`
+- Supports pause/resume with accumulated `elapsed_ms`
+- DurationModal allows manual time entry after completion
 
 ### Leaderboard (`/leaderboard`)
 
-Monthly accountability view.
+Trends and accountability view with charts.
 
 **Features**:
-- Shows current month stats
-- Ranked by Say/Do ratio
-- Progress bar visualization
-- Medal icons (🥇🥈🥉)
+- Period selector tabs (Today/Week/Month/All)
+- Recharts area chart showing Say/Do ratio trends over time
+- Person-colored gradient fills for each trend line
+- Ranked stats cards with progress bars
+- Confetti on 100% completion
+- Dark theme with glass-morphism cards
 
 ### Admin (`/admin`)
 
-Schedule management interface.
+Schedule management interface with dark theme.
 
 **Features**:
 - Cycle start date picker
-- Activity list (click to edit)
-- Add new activity button
+- Activity list with type badges (click to edit)
+- Add new activity button (opens ActivityForm modal)
 - Schedule grid:
-  - Week selector (1-4)
+  - Week selector (1-4) with gradient buttons
   - Click cells to cycle through: - → T → I → A → E → -
   - Auto-saves on change
+- Dark theme with pulsing background particles
 
 ---
 
@@ -389,27 +480,45 @@ const { data: { user } } = await supabase.auth.getUser()
 
 ## Color System
 
-### Person Colors
-| Person | Primary | Text | Tailwind |
-|--------|---------|------|----------|
-| Thomas | Blue | `text-blue-700` | `bg-blue-500` |
-| Ivor | Green | `text-green-700` | `bg-green-500` |
-| Axel | Orange | `text-orange-700` | `bg-orange-500` |
+The app uses a **dark theme** with person-specific color gradients.
+
+### Person Colors (Dark Theme)
+| Person | Gradient | Chart Color |
+|--------|----------|-------------|
+| Thomas | Blue (`#3B82F6` → `#1E40AF`) | `#3B82F6` |
+| Ivor | Green (`#22C55E` → `#15803D`) | `#22C55E` |
+| Axel | Orange (`#F97316` → `#C2410C`) | `#F97316` |
+
+### Person Colors (Component Variants)
+| Person | Schedule Grid | Badge |
+|--------|---------------|-------|
+| Thomas | `bg-blue-500/30 text-blue-300 border-blue-500/40` | Blue gradient |
+| Ivor | `bg-green-500/30 text-green-300 border-green-500/40` | Green gradient |
+| Axel | `bg-orange-500/30 text-orange-300 border-orange-500/40` | Orange gradient |
+| Everyone | `bg-purple-500/30 text-purple-300 border-purple-500/40` | Purple gradient |
 
 ### Activity Type Colors
-| Type | Background |
-|------|------------|
-| Home | `bg-purple-100` |
-| Brain | `bg-yellow-100` |
-| Body | `bg-red-100` |
-| Downtime | `bg-teal-100` |
+| Type | Badge Style |
+|------|-------------|
+| Home | `bg-purple-500/20 text-purple-300` |
+| Brain | `bg-yellow-500/20 text-yellow-300` |
+| Body | `bg-red-500/20 text-red-300` |
+| Downtime | `bg-teal-500/20 text-teal-300` |
 
-### Status Colors
-| Status | Style |
-|--------|-------|
-| Done | `bg-green-50` row, green text |
-| Blocked | `bg-red-50` row, red text |
-| Skipped | `bg-gray-100` row, gray text |
+### Status Colors (Dark Mode)
+| Status | Row Background | Text |
+|--------|----------------|------|
+| Done | `bg-green-500/10` | Green |
+| Blocked | `bg-red-500/10` | Red |
+| Skipped | `bg-gray-500/10` | Gray |
+| Started | Default | Timer display |
+
+### Glass-morphism Card Style
+```css
+background: linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8));
+box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+border: 1px solid rgba(255,255,255,0.1);
+```
 
 ---
 
@@ -486,13 +595,11 @@ See migration files for complete seed data:
 
 ## Known Issues / TODOs
 
-1. **Next.js 16 Middleware Warning**: The `middleware` convention is deprecated in favor of `proxy`. This is a cosmetic warning and doesn't affect functionality.
+1. **Auth Bypass**: Currently disabled for debugging. Re-enable before production.
 
-2. **Auth Bypass**: Currently disabled for debugging. Re-enable before production.
+2. **Activity Description Modal**: Spec mentions clicking activity name shows description - not yet implemented.
 
-3. **Activity Description Modal**: Spec mentions clicking activity name shows description - not yet implemented.
-
-4. **Time Zone Handling**: Dates are stored as `YYYY-MM-DD` strings. Ensure consistent timezone handling.
+3. **Time Zone Handling**: Dates are stored as `YYYY-MM-DD` strings. Ensure consistent timezone handling.
 
 ---
 
@@ -500,10 +607,14 @@ See migration files for complete seed data:
 
 1. **No Real-time**: Simple fetch on page load. Supabase realtime subscriptions not needed for this use case.
 
-2. **Timer State**: Kept in React state, only persisted on "Done" click. Prevents DB spam during timing.
+2. **Timer State**: Kept in React state, only persisted on "Done" click. Supports pause/resume via `elapsed_ms` column.
 
 3. **Optimistic UI**: Schedule changes update immediately, rollback on error.
 
 4. **"Everyone" Expansion**: Done at API level (`/api/daily`) rather than database level for simpler schema.
 
 5. **Client Components**: Most pages are client components (`'use client'`) for interactivity. API routes handle data fetching.
+
+6. **Dark Theme First**: All components styled for dark mode with glass-morphism effects. Components support optional `darkMode` prop for flexibility.
+
+7. **Sticky Headers with Opaque Backgrounds**: Person and date headers use fully opaque backgrounds to prevent task text from bleeding through during scroll.
