@@ -488,7 +488,7 @@ See migration files for complete seed data:
 
 1. **Next.js 16 Middleware Warning**: The `middleware` convention is deprecated in favor of `proxy`. This is a cosmetic warning and doesn't affect functionality.
 
-2. **Auth Bypass**: Currently disabled for debugging. Re-enable before production.
+2. **Auth**: Enabled via Google OAuth. Unauthenticated users are redirected to `/login`.
 
 3. **Activity Description Modal**: Spec mentions clicking activity name shows description - not yet implemented.
 
