@@ -10,19 +10,37 @@ export default function LoginPage() {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          hd: 'cbright.com', // Restrict to cbright.com domain
+        },
       },
     })
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Say Do</h1>
-        <p className="text-gray-600 mb-8">Family Activity Tracker</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex flex-col items-center justify-center p-4">
+      {/* Animated background particles */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      </div>
+
+      <div
+        className="relative z-10 max-w-md w-full rounded-2xl p-8 text-center"
+        style={{
+          background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+          border: '1px solid rgba(255,255,255,0.1)',
+        }}
+      >
+        <h1 className="text-5xl font-black bg-gradient-to-r from-purple-400 via-blue-400 to-emerald-400 bg-clip-text text-transparent mb-2">
+          Say Do
+        </h1>
+        <p className="text-gray-400 mb-8">Family Activity Tracker</p>
 
         <button
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-lg px-6 py-4 text-lg font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+          className="w-full flex items-center justify-center gap-3 bg-white rounded-xl px-6 py-4 text-lg font-medium text-gray-700 hover:bg-gray-100 transition-colors shadow-lg"
         >
           <svg className="w-6 h-6" viewBox="0 0 24 24">
             <path
@@ -46,7 +64,7 @@ export default function LoginPage() {
         </button>
 
         <p className="mt-8 text-sm text-gray-500">
-          Family members only
+          @cbright.com accounts only
         </p>
       </div>
     </div>
