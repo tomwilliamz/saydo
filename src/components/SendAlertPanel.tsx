@@ -8,12 +8,17 @@ import type { Device } from '@/lib/types'
 
 // Preset messages for quick sending
 const PRESET_MESSAGES = [
-  { label: 'Dinner Time!', message: 'Dinner Time!' },
   { label: 'Call Daddy ASAP', message: 'Call Daddy ASAP' },
-  { label: 'Come Downstairs', message: 'Come Downstairs' },
-  { label: 'Time for Bed', message: 'Time for Bed' },
-  { label: 'Chores Time', message: 'Time to do your chores!' },
+  { label: 'Boys!! Dinner time!', message: 'Boys!! Dinner time!' },
+  { label: 'Ivor! please get in the shower', message: 'Ivor! please get in the shower' },
 ]
+
+// Check if device is online (active in last 10 minutes)
+function isDeviceOnline(device: Device): boolean {
+  const lastActive = new Date(device.last_active_at).getTime()
+  const tenMinutesAgo = Date.now() - 10 * 60 * 1000
+  return lastActive > tenMinutesAgo
+}
 
 export default function SendAlertPanel() {
   const { deviceId, deviceName, sendAlert } = useAlerts()
@@ -101,19 +106,26 @@ export default function SendAlertPanel() {
           >
             All Devices
           </button>
-          {otherDevices.map((device) => (
-            <button
-              key={device.id}
-              onClick={() => setTargetDeviceId(device.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                targetDeviceId === device.id
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
-              }`}
-            >
-              {device.name}
-            </button>
-          ))}
+          {otherDevices.map((device) => {
+            const online = isDeviceOnline(device)
+            return (
+              <button
+                key={device.id}
+                onClick={() => online && setTargetDeviceId(device.id)}
+                disabled={!online}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  targetDeviceId === device.id
+                    ? 'bg-blue-500 text-white'
+                    : online
+                      ? 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
+                      : 'bg-gray-800/30 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                <span className={`inline-block w-2 h-2 rounded-full mr-2 ${online ? 'bg-green-400' : 'bg-gray-600'}`} />
+                {device.name}
+              </button>
+            )
+          })}
         </div>
       </div>
 

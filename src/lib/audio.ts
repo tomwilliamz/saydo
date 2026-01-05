@@ -86,3 +86,53 @@ export function playUrgentChime(): void {
     console.error('Failed to play urgent chime:', error)
   }
 }
+
+// Very jarring, loud alarm for escalated alerts
+export function playEscalatedAlarm(): void {
+  try {
+    const ctx = getAudioContext()
+
+    if (ctx.state === 'suspended') {
+      ctx.resume()
+    }
+
+    const now = ctx.currentTime
+
+    // Create a harsh, attention-grabbing alarm with multiple oscillators
+    // and rapid frequency modulation
+    for (let burst = 0; burst < 4; burst++) {
+      const burstStart = now + burst * 0.25
+
+      // Main harsh tone with sawtooth wave
+      const osc1 = ctx.createOscillator()
+      const gain1 = ctx.createGain()
+      osc1.connect(gain1)
+      gain1.connect(ctx.destination)
+      osc1.type = 'sawtooth'
+      osc1.frequency.setValueAtTime(800, burstStart)
+      osc1.frequency.linearRampToValueAtTime(1200, burstStart + 0.1)
+      osc1.frequency.linearRampToValueAtTime(800, burstStart + 0.2)
+      gain1.gain.setValueAtTime(0.6, burstStart)
+      gain1.gain.setValueAtTime(0.6, burstStart + 0.15)
+      gain1.gain.exponentialRampToValueAtTime(0.01, burstStart + 0.22)
+      osc1.start(burstStart)
+      osc1.stop(burstStart + 0.22)
+
+      // High pitched overlay with square wave
+      const osc2 = ctx.createOscillator()
+      const gain2 = ctx.createGain()
+      osc2.connect(gain2)
+      gain2.connect(ctx.destination)
+      osc2.type = 'square'
+      osc2.frequency.setValueAtTime(1400, burstStart)
+      osc2.frequency.linearRampToValueAtTime(1800, burstStart + 0.05)
+      osc2.frequency.linearRampToValueAtTime(1400, burstStart + 0.1)
+      gain2.gain.setValueAtTime(0.3, burstStart)
+      gain2.gain.exponentialRampToValueAtTime(0.01, burstStart + 0.12)
+      osc2.start(burstStart)
+      osc2.stop(burstStart + 0.12)
+    }
+  } catch (error) {
+    console.error('Failed to play escalated alarm:', error)
+  }
+}

@@ -1,8 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { playUrgentChime } from '@/lib/audio'
+import { playUrgentChime, playEscalatedAlarm } from '@/lib/audio'
 import type { Alert } from '@/lib/types'
+
+const MAX_ALERT_DURATION_MS = 10 * 60 * 1000 // 10 minutes
+const ESCALATION_THRESHOLD_MS = 60 * 1000 // 1 minute
+const NORMAL_INTERVAL_MS = 5000 // 5 seconds between chimes
+const ESCALATED_INTERVAL_MS = 3000 // 3 seconds between alarms when escalated
 
 interface AlertOverlayProps {
   alert: Alert
@@ -11,12 +16,23 @@ interface AlertOverlayProps {
 
 export default function AlertOverlay({ alert, onDismiss }: AlertOverlayProps) {
   const chimeIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const startTimeRef = useRef<number>(Date.now())
   const [audioUnlocked, setAudioUnlocked] = useState(false)
+  const [isEscalated, setIsEscalated] = useState(false)
+
+  // Play the appropriate sound based on escalation state
+  const playSound = (escalated: boolean) => {
+    if (escalated) {
+      playEscalatedAlarm()
+    } else {
+      playUrgentChime()
+    }
+  }
 
   // Try to play chime - if blocked, user needs to tap first
   const tryPlayChime = () => {
     try {
-      playUrgentChime()
+      playSound(isEscalated)
       setAudioUnlocked(true)
     } catch {
       // Audio blocked, will work after user interaction
@@ -31,22 +47,44 @@ export default function AlertOverlay({ alert, onDismiss }: AlertOverlayProps) {
   }
 
   useEffect(() => {
+    startTimeRef.current = Date.now()
+
     // Try to play immediately (may be blocked)
     tryPlayChime()
 
-    // Set up interval for repeating chime every 30 seconds
-    chimeIntervalRef.current = setInterval(() => {
-      if (audioUnlocked) {
-        playUrgentChime()
+    const runChimeLoop = () => {
+      const elapsed = Date.now() - startTimeRef.current
+
+      // Stop after max duration
+      if (elapsed >= MAX_ALERT_DURATION_MS) {
+        if (chimeIntervalRef.current) {
+          clearInterval(chimeIntervalRef.current)
+        }
+        return
       }
-    }, 30000)
+
+      // Check if we should escalate
+      const shouldEscalate = elapsed >= ESCALATION_THRESHOLD_MS
+      if (shouldEscalate && !isEscalated) {
+        setIsEscalated(true)
+      }
+
+      if (audioUnlocked) {
+        playSound(shouldEscalate)
+      }
+    }
+
+    // Start with normal interval, will switch to escalated interval when needed
+    const getInterval = () => isEscalated ? ESCALATED_INTERVAL_MS : NORMAL_INTERVAL_MS
+
+    chimeIntervalRef.current = setInterval(runChimeLoop, getInterval())
 
     return () => {
       if (chimeIntervalRef.current) {
         clearInterval(chimeIntervalRef.current)
       }
     }
-  }, [alert.id, audioUnlocked])
+  }, [alert.id, audioUnlocked, isEscalated])
 
   const fromDevice = alert.from_device?.name || 'Unknown device'
 
