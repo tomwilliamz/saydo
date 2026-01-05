@@ -624,7 +624,20 @@ export default function PersonPage() {
                 )}
 
                 {/* Completed tasks */}
-                {completedTasks.length > 0 && (
+                {completedTasks.length > 0 && (() => {
+                  const totalEstimatedMs = completedTasks.reduce((sum, t) => sum + (t.activity.default_minutes * 60 * 1000), 0)
+                  const totalActualMs = completedTasks.reduce((sum, t) => sum + (t.completion?.elapsed_ms || t.activity.default_minutes * 60 * 1000), 0)
+                  const percentDiff = totalEstimatedMs > 0 ? ((totalEstimatedMs - totalActualMs) / totalEstimatedMs) * 100 : 0
+                  const formatTime = (ms: number) => {
+                    const mins = Math.round(ms / 60000)
+                    if (mins >= 60) {
+                      const h = Math.floor(mins / 60)
+                      const m = mins % 60
+                      return m > 0 ? `${h}h ${m}m` : `${h}h`
+                    }
+                    return `${mins}m`
+                  }
+                  return (
                   <div
                     className={`rounded-2xl overflow-hidden ${incompleteTasks.length > 0 ? 'mt-6' : ''}`}
                     style={{
@@ -633,6 +646,17 @@ export default function PersonPage() {
                       border: '1px solid rgba(255,255,255,0.05)',
                     }}
                   >
+                    <div className="px-4 py-2 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span className="text-sm text-slate-400">Completed</span>
+                      <span className="text-sm text-slate-400">
+                        {formatTime(totalActualMs)} / {formatTime(totalEstimatedMs)}
+                        {percentDiff !== 0 && (
+                          <span className={percentDiff > 0 ? 'text-green-400' : 'text-orange-400'}>
+                            {' '}({percentDiff > 0 ? '' : '+'}{Math.abs(Math.round(percentDiff))}% {percentDiff > 0 ? 'faster' : 'slower'})
+                          </span>
+                        )}
+                      </span>
+                    </div>
                     {completedTasks.map((task) => (
                       <TaskRow
                         key={task.activity.id}
@@ -652,7 +676,8 @@ export default function PersonPage() {
                       />
                     ))}
                   </div>
-                )}
+                  )
+                })()}
               </>
             )
           ) : (
