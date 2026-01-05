@@ -115,3 +115,32 @@ export interface Alert {
   // Joined fields
   from_device?: Device
 }
+
+// Long Term Task status
+export type LongTermTaskStatus = 'active' | 'completed'
+
+// Long Term Task
+export interface LongTermTask {
+  id: string
+  person: Person
+  title: string
+  category: ActivityType
+  due_date: string | null  // YYYY-MM-DD format
+  default_estimate_minutes: number | null
+  total_time_spent_minutes: number
+  elapsed_ms: number  // Accumulated time in milliseconds (for pause/resume)
+  status: LongTermTaskStatus
+  created_at: string
+  completed_at: string | null
+  current_session_started_at: string | null
+}
+
+// Long Term Task Session
+export interface LongTermTaskSession {
+  id: string
+  task_id: string
+  started_at: string
+  ended_at: string | null
+  duration_minutes: number | null
+  created_at: string
+}

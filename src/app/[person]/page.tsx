@@ -8,6 +8,7 @@ import { format } from 'date-fns'
 import confetti from 'canvas-confetti'
 import TaskRow from '@/components/TaskRow'
 import DurationModal from '@/components/DurationModal'
+import LongTermTaskList from '@/components/LongTermTaskList'
 import { DailyTask, Person, ALL_PERSONS } from '@/lib/types'
 import {
   formatDateForDB,
@@ -58,6 +59,7 @@ export default function PersonPage() {
     elapsedMinutes: number
   }>({ isOpen: false, task: null, elapsedMinutes: 0 })
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [activeView, setActiveView] = useState<'daily' | 'long-term'>('daily')
 
   const fetchTasks = useCallback(async (date: Date) => {
     if (!person) return
@@ -433,19 +435,38 @@ export default function PersonPage() {
               >
                 &larr; Switch person
               </Link>
-              <div className="inline-flex rounded-full bg-black/20 px-3 py-1 backdrop-blur-sm">
-                <Link
-                  href="/leaderboard"
-                  className="text-white/70 hover:text-white text-sm transition-colors px-2"
-                >
-                  Trends
-                </Link>
-                <span className="text-white/30">|</span>
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center rounded-full bg-black/20 px-3 py-1 backdrop-blur-sm">
+                  <button
+                    onClick={() => setActiveView('daily')}
+                    className={`text-sm transition-colors px-3 ${activeView === 'daily' ? 'text-white font-semibold' : 'text-white/70 hover:text-white'}`}
+                  >
+                    Daily
+                  </button>
+                  <span className="text-white/30">|</span>
+                  <button
+                    onClick={() => setActiveView('long-term')}
+                    className={`text-sm transition-colors px-3 ${activeView === 'long-term' ? 'text-white font-semibold' : 'text-white/70 hover:text-white'}`}
+                  >
+                    Long Term
+                  </button>
+                  <span className="text-white/30">|</span>
+                  <Link
+                    href="/leaderboard"
+                    className="text-white/70 hover:text-white text-sm transition-colors px-3"
+                  >
+                    Leaderboard
+                  </Link>
+                </div>
                 <Link
                   href="/admin"
-                  className="text-white/70 hover:text-white text-sm transition-colors px-2"
+                  className="text-white/70 hover:text-white transition-colors p-2 rounded-full hover:bg-black/20"
+                  title="Settings"
                 >
-                  Admin
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  </svg>
                 </Link>
               </div>
             </div>
@@ -494,7 +515,7 @@ export default function PersonPage() {
           </div>
         </div>
 
-        {/* Date navigation - compact inline */}
+        {/* Date navigation */}
         <div
           className="px-6 rounded-t-[20%] relative -mt-2"
           style={{
@@ -502,26 +523,33 @@ export default function PersonPage() {
           }}
         >
           <div className="max-w-5xl mx-auto py-2 flex items-center justify-center gap-4">
-            <button
-              onClick={() => handleDateChange(getYesterday(currentDate))}
-              className="text-white/70 hover:text-white transition-colors px-3 py-1 text-xl"
-            >
-              &larr;
-            </button>
-            <button
-              onClick={() => setShowDatePicker(!showDatePicker)}
-              className="text-white font-medium hover:text-white/80 transition-colors"
-            >
-              {format(currentDate, 'MMMM d, yyyy')}
-            </button>
-            <button
-              onClick={() => handleDateChange(getTomorrow(currentDate))}
-              className="text-white/70 hover:text-white transition-colors px-3 py-1 text-xl"
-            >
-              &rarr;
-            </button>
+            {activeView === 'daily' && (
+              <>
+                <button
+                  onClick={() => handleDateChange(getYesterday(currentDate))}
+                  className="text-white/70 hover:text-white transition-colors px-3 py-1 text-xl"
+                >
+                  &larr;
+                </button>
+                <button
+                  onClick={() => setShowDatePicker(!showDatePicker)}
+                  className="text-white font-medium hover:text-white/80 transition-colors flex items-center gap-2"
+                >
+                  {format(currentDate, 'MMMM d, yyyy')}
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => handleDateChange(getTomorrow(currentDate))}
+                  className="text-white/70 hover:text-white transition-colors px-3 py-1 text-xl"
+                >
+                  &rarr;
+                </button>
+              </>
+            )}
           </div>
-          {showDatePicker && (
+          {showDatePicker && activeView === 'daily' && (
             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-50 rounded-lg shadow-lg p-2 bg-gray-800 border border-gray-700">
               <input
                 type="date"
@@ -541,90 +569,96 @@ export default function PersonPage() {
       {/* Task list */}
       <div className="flex-1 pb-12 relative z-0">
         <div className="max-w-5xl mx-auto py-4 px-6">
-          {loading ? (
-            <div
-              className="rounded-2xl p-8 text-center"
-              style={{
-                background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
-                border: '1px solid rgba(255,255,255,0.1)',
-              }}
-            >
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-transparent mb-4" style={{ borderColor: `${colors.main} transparent ${colors.main} ${colors.main}` }} />
-              <p className="text-gray-400">Loading tasks...</p>
-            </div>
-          ) : tasks.length === 0 ? (
-            <div
-              className="rounded-2xl p-8 text-center"
-              style={{
-                background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
-                border: '1px solid rgba(255,255,255,0.1)',
-              }}
-            >
-              <p className="text-gray-400">No tasks scheduled for this day.</p>
-            </div>
-          ) : (
-            <>
-              {/* Incomplete tasks */}
-              {incompleteTasks.length > 0 && (
-                <div
-                  className="rounded-2xl overflow-hidden"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
-                    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                  }}
-                >
-                  {incompleteTasks.map((task) => (
-                    <TaskRow
-                      key={task.activity.id}
-                      task={task}
-                      isPastDate={isPastDate}
-                      isExpanded={selectedTaskId === task.activity.id || task.completion?.status === 'started'}
-                      onRowClick={() => handleRowClick(task)}
-                      onStart={() => handleStart(task)}
-                      onStop={() => handleStop(task)}
-                      onResume={() => handleResume(task)}
-                      onDone={() => handleDone(task)}
-                      onSkip={() => handleSkip(task)}
-                      onUndo={() => handleUndo(task)}
-                      onReset={() => handleReset(task)}
-                      darkMode
-                    />
-                  ))}
-                </div>
-              )}
+          {activeView === 'daily' ? (
+            // Daily tasks view
+            loading ? (
+              <div
+                className="rounded-2xl p-8 text-center"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
+              >
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-transparent mb-4" style={{ borderColor: `${colors.main} transparent ${colors.main} ${colors.main}` }} />
+                <p className="text-gray-400">Loading tasks...</p>
+              </div>
+            ) : tasks.length === 0 ? (
+              <div
+                className="rounded-2xl p-8 text-center"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
+              >
+                <p className="text-gray-400">No tasks scheduled for this day.</p>
+              </div>
+            ) : (
+              <>
+                {/* Incomplete tasks */}
+                {incompleteTasks.length > 0 && (
+                  <div
+                    className="rounded-2xl overflow-hidden"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
+                      boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                    }}
+                  >
+                    {incompleteTasks.map((task) => (
+                      <TaskRow
+                        key={task.activity.id}
+                        task={task}
+                        isPastDate={isPastDate}
+                        isExpanded={selectedTaskId === task.activity.id || task.completion?.status === 'started'}
+                        onRowClick={() => handleRowClick(task)}
+                        onStart={() => handleStart(task)}
+                        onStop={() => handleStop(task)}
+                        onResume={() => handleResume(task)}
+                        onDone={() => handleDone(task)}
+                        onSkip={() => handleSkip(task)}
+                        onUndo={() => handleUndo(task)}
+                        onReset={() => handleReset(task)}
+                        darkMode
+                      />
+                    ))}
+                  </div>
+                )}
 
-              {/* Completed tasks */}
-              {completedTasks.length > 0 && (
-                <div
-                  className={`rounded-2xl overflow-hidden ${incompleteTasks.length > 0 ? 'mt-6' : ''}`}
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(30,41,59,0.4), rgba(15,23,42,0.6))',
-                    boxShadow: '0 15px 30px -12px rgba(0,0,0,0.2)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                  }}
-                >
-                  {completedTasks.map((task) => (
-                    <TaskRow
-                      key={task.activity.id}
-                      task={task}
-                      isPastDate={isPastDate}
-                      isExpanded={selectedTaskId === task.activity.id}
-                      onRowClick={() => handleRowClick(task)}
-                      onStart={() => handleStart(task)}
-                      onStop={() => handleStop(task)}
-                      onResume={() => handleResume(task)}
-                      onDone={() => handleDone(task)}
-                      onSkip={() => handleSkip(task)}
-                      onUndo={() => handleUndo(task)}
-                      onReset={() => handleReset(task)}
-                      onEditDuration={() => handleEditDuration(task)}
-                      darkMode
-                    />
-                  ))}
-                </div>
-              )}
-            </>
+                {/* Completed tasks */}
+                {completedTasks.length > 0 && (
+                  <div
+                    className={`rounded-2xl overflow-hidden ${incompleteTasks.length > 0 ? 'mt-6' : ''}`}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(30,41,59,0.4), rgba(15,23,42,0.6))',
+                      boxShadow: '0 15px 30px -12px rgba(0,0,0,0.2)',
+                      border: '1px solid rgba(255,255,255,0.05)',
+                    }}
+                  >
+                    {completedTasks.map((task) => (
+                      <TaskRow
+                        key={task.activity.id}
+                        task={task}
+                        isPastDate={isPastDate}
+                        isExpanded={selectedTaskId === task.activity.id}
+                        onRowClick={() => handleRowClick(task)}
+                        onStart={() => handleStart(task)}
+                        onStop={() => handleStop(task)}
+                        onResume={() => handleResume(task)}
+                        onDone={() => handleDone(task)}
+                        onSkip={() => handleSkip(task)}
+                        onUndo={() => handleUndo(task)}
+                        onReset={() => handleReset(task)}
+                        onEditDuration={() => handleEditDuration(task)}
+                        darkMode
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )
+          ) : (
+            // Long Term tasks view
+            <LongTermTaskList person={person} colors={colors} />
           )}
         </div>
       </div>
