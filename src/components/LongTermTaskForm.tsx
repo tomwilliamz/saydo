@@ -26,9 +26,48 @@ export default function LongTermTaskForm({
   const [title, setTitle] = useState(task?.title || '')
   const [category, setCategory] = useState<ActivityType>(task?.category || 'Home')
   const [dueDate, setDueDate] = useState(task?.due_date || '')
-  const [estimateMinutes, setEstimateMinutes] = useState(
-    task?.default_estimate_minutes?.toString() || ''
-  )
+  const [estimateInput, setEstimateInput] = useState(() => {
+    if (!task?.default_estimate_minutes) return ''
+    const mins = task.default_estimate_minutes
+    const h = Math.floor(mins / 60)
+    const m = mins % 60
+    if (h > 0 && m > 0) return `${h}h ${m}m`
+    if (h > 0) return `${h}h`
+    return `${m}m`
+  })
+
+  // Parse duration string like "8h 2m", "2h", "30m", "90" (minutes)
+  const parseDuration = (input: string): number | undefined => {
+    if (!input.trim()) return undefined
+
+    const normalized = input.toLowerCase().trim()
+
+    // Match patterns like "8h 2m", "8h2m", "8h 2", "8 h 2 m"
+    const hourMinMatch = normalized.match(/(\d+)\s*h\s*(\d+)\s*m?/)
+    if (hourMinMatch) {
+      return parseInt(hourMinMatch[1]) * 60 + parseInt(hourMinMatch[2])
+    }
+
+    // Match hours only: "8h", "8 h"
+    const hourMatch = normalized.match(/^(\d+)\s*h$/)
+    if (hourMatch) {
+      return parseInt(hourMatch[1]) * 60
+    }
+
+    // Match minutes only: "30m", "30 m"
+    const minMatch = normalized.match(/^(\d+)\s*m$/)
+    if (minMatch) {
+      return parseInt(minMatch[1])
+    }
+
+    // Plain number = minutes
+    const plainNum = normalized.match(/^(\d+)$/)
+    if (plainNum) {
+      return parseInt(plainNum[1])
+    }
+
+    return undefined
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,7 +77,7 @@ export default function LongTermTaskForm({
       title: title.trim(),
       category,
       due_date: dueDate || undefined,
-      default_estimate_minutes: estimateMinutes ? parseInt(estimateMinutes) : undefined,
+      default_estimate_minutes: parseDuration(estimateInput),
     })
   }
 
@@ -105,15 +144,14 @@ export default function LongTermTaskForm({
             {/* Time Estimate */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Time Estimate (minutes, optional)
+                Time Estimate (optional)
               </label>
               <input
-                type="number"
-                value={estimateMinutes}
-                onChange={(e) => setEstimateMinutes(e.target.value)}
+                type="text"
+                value={estimateInput}
+                onChange={(e) => setEstimateInput(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., 60"
-                min="1"
+                placeholder="e.g., 8h 2m, 2h, 30m, or 90"
               />
             </div>
           </div>

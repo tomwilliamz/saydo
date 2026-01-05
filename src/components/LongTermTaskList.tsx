@@ -204,6 +204,8 @@ export default function LongTermTaskList({ person, colors }: LongTermTaskListPro
   }
 
   const activeTasks = tasks.filter((t) => t.status === 'active')
+  const activeWithDueDate = activeTasks.filter((t) => t.due_date)
+  const activeWithoutDueDate = activeTasks.filter((t) => !t.due_date)
   const completedTasks = tasks.filter((t) => t.status === 'completed')
 
   if (loading) {
@@ -224,8 +226,15 @@ export default function LongTermTaskList({ person, colors }: LongTermTaskListPro
     )
   }
 
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    // Only close if clicking directly on the container (not on task rows)
+    if (e.target === e.currentTarget) {
+      setSelectedTaskId(null)
+    }
+  }
+
   return (
-    <>
+    <div onClick={handleBackgroundClick} className="min-h-[200px]">
       {tasks.length === 0 ? (
         <div
           className="rounded-2xl p-8 text-center"
@@ -244,8 +253,8 @@ export default function LongTermTaskList({ person, colors }: LongTermTaskListPro
         </div>
       ) : (
         <>
-          {/* Active tasks */}
-          {activeTasks.length > 0 && (
+          {/* Active tasks with due date */}
+          {activeWithDueDate.length > 0 && (
             <div
               className="rounded-2xl overflow-hidden"
               style={{
@@ -254,7 +263,41 @@ export default function LongTermTaskList({ person, colors }: LongTermTaskListPro
                 border: '1px solid rgba(255,255,255,0.1)',
               }}
             >
-              {activeTasks.map((task) => (
+              <div className="px-6 py-3 border-b border-white/10">
+                <span className="text-sm text-gray-400 font-medium">With Due Date</span>
+              </div>
+              {activeWithDueDate.map((task) => (
+                <LongTermTaskRow
+                  key={task.id}
+                  task={task}
+                  isExpanded={selectedTaskId === task.id || !!task.current_session_started_at}
+                  onRowClick={() => setSelectedTaskId(selectedTaskId === task.id ? null : task.id)}
+                  onStart={() => handleStart(task)}
+                  onStop={() => handleStop(task)}
+                  onComplete={() => handleComplete(task)}
+                  onEdit={() => setEditingTask(task)}
+                  onReopen={() => handleReopen(task)}
+                  onDelete={() => handleDeleteDirect(task.id)}
+                  darkMode
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Active tasks without due date */}
+          {activeWithoutDueDate.length > 0 && (
+            <div
+              className={`rounded-2xl overflow-hidden ${activeWithDueDate.length > 0 ? 'mt-6' : ''}`}
+              style={{
+                background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)',
+                border: '1px solid rgba(255,255,255,0.1)',
+              }}
+            >
+              <div className="px-6 py-3 border-b border-white/10">
+                <span className="text-sm text-gray-400 font-medium">No Due Date</span>
+              </div>
+              {activeWithoutDueDate.map((task) => (
                 <LongTermTaskRow
                   key={task.id}
                   task={task}
@@ -275,7 +318,7 @@ export default function LongTermTaskList({ person, colors }: LongTermTaskListPro
           {/* Completed tasks */}
           {completedTasks.length > 0 && (
             <div
-              className={`rounded-2xl overflow-hidden ${activeTasks.length > 0 ? 'mt-6' : ''}`}
+              className={`rounded-2xl overflow-hidden ${activeWithDueDate.length > 0 || activeWithoutDueDate.length > 0 ? 'mt-6' : ''}`}
               style={{
                 background: 'linear-gradient(135deg, rgba(30,41,59,0.4), rgba(15,23,42,0.6))',
                 boxShadow: '0 15px 30px -12px rgba(0,0,0,0.2)',
@@ -334,6 +377,6 @@ export default function LongTermTaskList({ person, colors }: LongTermTaskListPro
           onDelete={handleDelete}
         />
       )}
-    </>
+    </div>
   )
 }

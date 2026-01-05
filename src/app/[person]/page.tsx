@@ -490,7 +490,7 @@ export default function PersonPage() {
               </div>
               {/* Day of week with Today button above (absolute so it doesn't push content) */}
               <div className="relative">
-                {!isToday(currentDate) && (
+                {activeView === 'daily' && !isToday(currentDate) && (
                   <button
                     onClick={() => handleDateChange(new Date())}
                     className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-white/70 hover:text-white transition-colors px-3 py-1 rounded-lg bg-black/20 whitespace-nowrap"
@@ -498,7 +498,9 @@ export default function PersonPage() {
                     Go to Today
                   </button>
                 )}
-                <span className="text-6xl font-bold text-white drop-shadow-lg">{format(currentDate, 'EEEE')}</span>
+                <span className="text-6xl font-bold text-white drop-shadow-lg">
+                  {activeView === 'long-term' ? 'Long Term Say Dos' : format(currentDate, 'EEEE')}
+                </span>
               </div>
               <div className="flex-1 flex justify-end">
                 <div

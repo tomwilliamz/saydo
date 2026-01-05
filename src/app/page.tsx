@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
-import { ALL_PERSONS, PERSON_COLORS, PERSON_AVATARS, Person } from '@/lib/types'
+import { ALL_PERSONS, PERSON_COLORS, PERSON_AVATARS, Person, ActivityType } from '@/lib/types'
 import SendAlertModal from '@/components/SendAlertModal'
+import LongTermTaskForm from '@/components/LongTermTaskForm'
 
 interface PersonProgress {
   person: Person
@@ -115,6 +116,8 @@ export default function HomePage() {
   const [period, setPeriod] = useState<TimePeriod>('today')
   const [hoveredPerson, setHoveredPerson] = useState<Person | null>(null)
   const [showAlertModal, setShowAlertModal] = useState(false)
+  const [showLongTermForm, setShowLongTermForm] = useState(false)
+  const [selectedPersonForTask, setSelectedPersonForTask] = useState<Person | null>(null)
 
   useEffect(() => {
     async function fetchProgress() {
@@ -161,6 +164,28 @@ export default function HomePage() {
       if (current === 'month') return 'all'
       return 'today'
     })
+  }
+
+  const handleCreateLongTermTask = async (data: {
+    title: string
+    category: ActivityType
+    due_date?: string
+    default_estimate_minutes?: number
+  }) => {
+    if (!selectedPersonForTask) return
+
+    try {
+      await fetch('/api/long-term-tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, person: selectedPersonForTask }),
+      })
+    } catch (error) {
+      console.error('Failed to create task:', error)
+    }
+
+    setShowLongTermForm(false)
+    setSelectedPersonForTask(null)
   }
 
   return (
@@ -294,6 +319,53 @@ export default function HomePage() {
           <SendAlertModal onClose={() => setShowAlertModal(false)} />
         )}
 
+        {/* Person selector for Long Term task */}
+        {showLongTermForm && !selectedPersonForTask && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-700 p-6">
+              <h2 className="text-xl font-bold text-white mb-4 text-center">
+                Create Long Term Task for...
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
+                {ALL_PERSONS.map((person) => {
+                  const colors = CHART_COLORS[person]
+                  return (
+                    <button
+                      key={person}
+                      onClick={() => setSelectedPersonForTask(person)}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl transition-all hover:scale-105"
+                      style={{
+                        background: `linear-gradient(135deg, ${colors.gradient[0]}22, ${colors.gradient[2]}44)`,
+                        border: `1px solid ${colors.gradient[0]}44`,
+                      }}
+                    >
+                      <PersonAvatar person={person} size="small" />
+                      <span className="text-white font-medium">{person}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                onClick={() => setShowLongTermForm(false)}
+                className="w-full mt-4 py-2 text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Long Term Task Form */}
+        {showLongTermForm && selectedPersonForTask && (
+          <LongTermTaskForm
+            onSave={handleCreateLongTermTask}
+            onCancel={() => {
+              setShowLongTermForm(false)
+              setSelectedPersonForTask(null)
+            }}
+          />
+        )}
+
         {/* Progress with cycling periods */}
         <div
           className="w-full max-w-lg p-6 rounded-2xl mb-8"
@@ -326,6 +398,19 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      {/* Floating add button for Long Term tasks */}
+      <button
+        onClick={() => setShowLongTermForm(true)}
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full text-white text-3xl shadow-lg hover:scale-110 transition-transform z-20"
+        style={{
+          background: 'linear-gradient(135deg, #60A5FA, #1E40AF)',
+          boxShadow: '0 10px 30px rgba(59, 130, 246, 0.4)',
+        }}
+        title="Create Long Term Task"
+      >
+        +
+      </button>
     </div>
   )
 }

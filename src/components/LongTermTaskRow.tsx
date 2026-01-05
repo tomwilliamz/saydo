@@ -50,19 +50,22 @@ export default function LongTermTaskRow({
 
   // Format due date
   const formatDueDate = (dateStr: string) => {
-    const date = new Date(dateStr)
+    // Parse the date string as local date (YYYY-MM-DD format)
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const dueDate = new Date(year, month - 1, day) // month is 0-indexed
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const dueDate = new Date(date)
     dueDate.setHours(0, 0, 0, 0)
 
-    const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    const diffMs = dueDate.getTime() - today.getTime()
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
 
     if (diffDays < 0) return 'Overdue'
     if (diffDays === 0) return 'Due today'
     if (diffDays === 1) return 'Due tomorrow'
     if (diffDays <= 7) return `Due in ${diffDays} days`
-    return `Due ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    return `Due ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
   }
 
   const renderExpandedActions = () => {
