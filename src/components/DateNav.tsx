@@ -37,6 +37,21 @@ export default function DateNav({
     <div className="flex items-center justify-between py-4">
       {/* Left side: big day display */}
       <div>
+        {/* TODAY button - centered above day of week, hidden when on today */}
+        {!isToday && (
+          <div className="flex justify-center mb-1">
+            <button
+              onClick={onToday}
+              className={`px-3 py-1 text-sm rounded-lg font-medium transition-colors ${
+                darkMode
+                  ? 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Go to Today
+            </button>
+          </div>
+        )}
         <div className={`text-5xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{dayOfWeek}</div>
         <div className={`text-lg mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{dateDisplay}</div>
       </div>
@@ -53,21 +68,6 @@ export default function DateNav({
         >
           <span className="text-xl">&larr;</span>
           <span>{isToday ? 'Yesterday' : 'Prior Day'}</span>
-        </button>
-
-        <button
-          onClick={onToday}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            darkMode
-              ? isToday
-                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
-              : isToday
-                ? 'bg-yellow-100 text-yellow-800'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          {isToday ? 'Today' : 'Go to Today'}
         </button>
 
         <button
