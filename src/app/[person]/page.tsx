@@ -467,7 +467,18 @@ export default function PersonPage() {
                 </div>
                 <span className="text-3xl font-bold text-white">{person}</span>
               </div>
-              <span className="text-6xl font-bold text-white drop-shadow-lg">{format(currentDate, 'EEEE')}</span>
+              {/* Day of week with Today button above (absolute so it doesn't push content) */}
+              <div className="relative">
+                {!isToday(currentDate) && (
+                  <button
+                    onClick={() => handleDateChange(new Date())}
+                    className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-white/70 hover:text-white transition-colors px-3 py-1 rounded-lg bg-black/20 whitespace-nowrap"
+                  >
+                    Go to Today
+                  </button>
+                )}
+                <span className="text-6xl font-bold text-white drop-shadow-lg">{format(currentDate, 'EEEE')}</span>
+              </div>
               <div className="flex-1 flex justify-end">
                 <div
                   className="text-3xl font-black px-4 py-1 rounded-xl"
@@ -512,14 +523,6 @@ export default function PersonPage() {
             >
               &rarr;
             </button>
-            {!isToday(currentDate) && (
-              <button
-                onClick={() => handleDateChange(new Date())}
-                className="text-xs text-white/50 hover:text-white transition-colors ml-2 px-2 py-1 rounded bg-black/20"
-              >
-                Today
-              </button>
-            )}
           </div>
           {showDatePicker && (
             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-50 rounded-lg shadow-lg p-2 bg-gray-800 border border-gray-700">
