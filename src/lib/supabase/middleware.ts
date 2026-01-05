@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 const PUBLIC_PATHS = ['/login', '/auth', '/api/devices', '/api/alerts', '/api/long-term-tasks']
 
 // Paths that require auth but not a profile
-const AUTH_ONLY_PATHS = ['/onboarding', '/api/profile']
+const AUTH_ONLY_PATHS = ['/onboarding', '/api/users', '/api/families']
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -62,11 +62,11 @@ export async function updateSession(request: NextRequest) {
 
   // For authenticated users on non-auth-only paths, check if they have a profile
   if (user && !isPublicPath && !isAuthOnlyPath) {
-    // Check if user has a profile
+    // Check if user has a profile in the users table
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from('users')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('id', user.id)
       .single()
 
     // If no profile, redirect to onboarding
@@ -80,9 +80,9 @@ export async function updateSession(request: NextRequest) {
   // If user is on onboarding but already has a profile, redirect home
   if (user && pathname === '/onboarding') {
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from('users')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('id', user.id)
       .single()
 
     if (profile) {

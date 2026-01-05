@@ -1,33 +1,36 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { LongTermTask, Person, ActivityType } from '@/lib/types'
+import { LongTermTask, ActivityType, getUserColor } from '@/lib/types'
 import LongTermTaskRow from './LongTermTaskRow'
 import LongTermTaskForm from './LongTermTaskForm'
 
 interface LongTermTaskListProps {
-  person: Person
-  colors: { main: string; gradient: string[] }
+  userId: string
 }
 
-export default function LongTermTaskList({ person, colors }: LongTermTaskListProps) {
+export default function LongTermTaskList({ userId }: LongTermTaskListProps) {
   const [tasks, setTasks] = useState<LongTermTask[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingTask, setEditingTask] = useState<LongTermTask | null>(null)
 
+  // Get a consistent color for the user
+  const colorIndex = userId ? parseInt(userId.substring(0, 8), 16) % 6 : 0
+  const colors = getUserColor(colorIndex)
+
   const fetchTasks = useCallback(async () => {
     try {
-      const response = await fetch(`/api/long-term-tasks?person=${person}`)
+      const response = await fetch(`/api/long-term-tasks?user_id=${userId}`)
       const data = await response.json()
-      setTasks(data)
+      setTasks(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to fetch long term tasks:', error)
     } finally {
       setLoading(false)
     }
-  }, [person])
+  }, [userId])
 
   useEffect(() => {
     fetchTasks()
@@ -138,7 +141,7 @@ export default function LongTermTaskList({ person, colors }: LongTermTaskListPro
       const response = await fetch('/api/long-term-tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, person }),
+        body: JSON.stringify({ ...data, user_id: userId }),
       })
       const newTask = await response.json()
       setTasks((prev) => [newTask, ...prev])
@@ -217,10 +220,7 @@ export default function LongTermTaskList({ person, colors }: LongTermTaskListPro
           border: '1px solid rgba(255,255,255,0.1)',
         }}
       >
-        <div
-          className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-transparent mb-4"
-          style={{ borderColor: `${colors.main} transparent ${colors.main} ${colors.main}` }}
-        />
+        <div className={`inline-block animate-spin rounded-full h-8 w-8 border-4 ${colors.border} border-t-transparent mb-4`} />
         <p className="text-gray-400">Loading tasks...</p>
       </div>
     )
@@ -351,11 +351,7 @@ export default function LongTermTaskList({ person, colors }: LongTermTaskListPro
       {/* Floating add button */}
       <button
         onClick={() => setShowForm(true)}
-        className="fixed bottom-20 right-6 w-14 h-14 rounded-full text-white text-3xl shadow-lg hover:scale-110 transition-transform z-20"
-        style={{
-          background: `linear-gradient(135deg, ${colors.gradient[0]}, ${colors.gradient[2]})`,
-          boxShadow: `0 10px 30px ${colors.main}44`,
-        }}
+        className={`fixed bottom-20 right-6 w-14 h-14 rounded-full text-white text-3xl shadow-lg hover:scale-110 transition-transform z-20 bg-gradient-to-br ${colors.gradient}`}
       >
         +
       </button>

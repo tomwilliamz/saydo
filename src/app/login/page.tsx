@@ -10,9 +10,6 @@ export default function LoginPage() {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          hd: 'cbright.com', // Restrict to cbright.com domain
-        },
       },
     })
   }
@@ -64,7 +61,7 @@ export default function LoginPage() {
         </button>
 
         <p className="mt-8 text-sm text-gray-500">
-          @cbright.com accounts only
+          Sign in with any Google account to get started
         </p>
       </div>
     </div>

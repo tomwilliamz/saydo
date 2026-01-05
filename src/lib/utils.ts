@@ -1,13 +1,16 @@
 import { format, parseISO, differenceInDays, addDays, subDays, getDay, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns'
 
 /**
- * Calculate the week of cycle (1-4) for a given date
+ * Calculate the week of cycle for a given date
+ * @param targetDate - The date to calculate for
+ * @param cycleStartDate - When the cycle started
+ * @param cycleWeeks - How many weeks in the cycle (1-4, default 4)
  */
-export function getWeekOfCycle(targetDate: Date, cycleStartDate: Date): number {
+export function getWeekOfCycle(targetDate: Date, cycleStartDate: Date, cycleWeeks: number = 4): number {
   const daysSinceStart = differenceInDays(targetDate, cycleStartDate)
-  const weekNumber = Math.floor(daysSinceStart / 7) % 4
+  const weekNumber = Math.floor(daysSinceStart / 7) % cycleWeeks
   // Handle negative weeks for dates before cycle start
-  return weekNumber >= 0 ? weekNumber + 1 : (4 + weekNumber + 1)
+  return weekNumber >= 0 ? weekNumber + 1 : (cycleWeeks + weekNumber + 1)
 }
 
 /**

@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
-import { ALL_PERSONS, PERSON_COLORS, PERSON_AVATARS, Person, ActivityType } from '@/lib/types'
+import { User, ActivityType, getUserColor, DEFAULT_USER_COLORS } from '@/lib/types'
 import SendAlertModal from '@/components/SendAlertModal'
 import LongTermTaskForm from '@/components/LongTermTaskForm'
 
-interface PersonProgress {
-  person: Person
+interface UserProgress {
+  user: User
   done: number
   total: number
   percentage: number
@@ -23,46 +23,43 @@ const PERIOD_LABELS: Record<TimePeriod, string> = {
   all: 'All Time SayDo Leader',
 }
 
-// Color configs for 3D effects - matching leaderboard
-const CHART_COLORS = {
-  Thomas: { main: '#3B82F6', gradient: ['#60A5FA', '#2563EB', '#1E40AF'] },
-  Ivor: { main: '#10B981', gradient: ['#34D399', '#059669', '#047857'] },
-  Axel: { main: '#F59E0B', gradient: ['#FBBF24', '#D97706', '#B45309'] },
-}
-
-function PersonAvatar({ person, size = 'large' }: { person: Person; size?: 'large' | 'small' }) {
+function UserAvatar({
+  user,
+  index,
+  size = 'large',
+}: {
+  user: User
+  index: number
+  size?: 'large' | 'small'
+}) {
   const [hasError, setHasError] = useState(false)
-  const colors = CHART_COLORS[person]
+  const colors = getUserColor(index)
 
-  const sizeClasses = size === 'large'
-    ? 'w-32 h-32 text-4xl'
-    : 'w-10 h-10 text-lg'
+  const sizeClasses = size === 'large' ? 'w-32 h-32 text-4xl' : 'w-10 h-10 text-lg'
 
-  if (hasError) {
+  if (hasError || !user.avatar_url) {
     return (
       <div
-        className={`${sizeClasses} rounded-full flex items-center justify-center text-white font-bold`}
+        className={`${sizeClasses} rounded-full flex items-center justify-center text-white font-bold bg-gradient-to-br ${colors.gradient}`}
         style={{
-          background: `linear-gradient(135deg, ${colors.gradient[0]}, ${colors.gradient[2]})`,
-          boxShadow: `0 0 20px ${colors.main}66`,
+          boxShadow: `0 0 20px ${colors.bg.replace('bg-', '')}66`,
         }}
       >
-        {person[0]}
+        {user.display_name[0].toUpperCase()}
       </div>
     )
   }
 
   return (
     <div
-      className={`${sizeClasses} rounded-full p-1`}
+      className={`${sizeClasses} rounded-full p-1 bg-gradient-to-br ${colors.gradient}`}
       style={{
-        background: `linear-gradient(135deg, ${colors.gradient[0]}, ${colors.gradient[2]})`,
-        boxShadow: `0 0 20px ${colors.main}66`,
+        boxShadow: `0 0 20px ${colors.bg.replace('bg-', '')}66`,
       }}
     >
       <Image
-        src={PERSON_AVATARS[person]}
-        alt={person}
+        src={user.avatar_url}
+        alt={user.display_name}
         width={size === 'large' ? 128 : 40}
         height={size === 'large' ? 128 : 40}
         className="w-full h-full rounded-full object-cover"
@@ -74,63 +71,103 @@ function PersonAvatar({ person, size = 'large' }: { person: Person; size?: 'larg
 
 function getMedalEmoji(rank: number): string {
   switch (rank) {
-    case 1: return '🥇'
-    case 2: return '🥈'
-    case 3: return '🥉'
-    default: return ''
+    case 1:
+      return '🥇'
+    case 2:
+      return '🥈'
+    case 3:
+      return '🥉'
+    default:
+      return ''
   }
 }
 
-function ProgressBar({ progress, rank }: { progress: PersonProgress; rank: number }) {
-  const colors = CHART_COLORS[progress.person]
+function ProgressBar({ progress, rank, index }: { progress: UserProgress; rank: number; index: number }) {
+  const colors = getUserColor(index)
 
   return (
-    <Link
-      href={`/${progress.person.toLowerCase()}`}
-      className="flex items-center gap-3 w-full hover:scale-105 transition-all duration-300 group"
-    >
-      <PersonAvatar person={progress.person} size="small" />
+    <Link href={`/person/${progress.user.id}`} className="flex items-center gap-3 w-full hover:scale-105 transition-all duration-300 group">
+      <UserAvatar user={progress.user} index={index} size="small" />
       <div className="flex-1 relative h-8 bg-gray-800/50 rounded-full overflow-hidden backdrop-blur-sm">
         <div
-          className="h-full transition-all duration-500 ease-out rounded-full"
+          className={`h-full transition-all duration-500 ease-out rounded-full bg-gradient-to-r ${colors.gradient}`}
           style={{
             width: `${Math.max(progress.percentage, 5)}%`,
-            background: `linear-gradient(90deg, ${colors.gradient[0]}, ${colors.gradient[2]})`,
-            boxShadow: `0 0 20px ${colors.main}66`,
           }}
         />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 text-sm font-bold">
-          {progress.percentage}%
-        </span>
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 text-sm font-bold">{progress.percentage}%</span>
       </div>
-      <span className="text-3xl w-10 text-center group-hover:scale-125 transition-transform">
-        {getMedalEmoji(rank)}
-      </span>
+      <span className="text-3xl w-10 text-center group-hover:scale-125 transition-transform">{getMedalEmoji(rank)}</span>
     </Link>
   )
 }
 
 export default function HomePage() {
-  const [progressData, setProgressData] = useState<PersonProgress[]>([])
+  const [familyMembers, setFamilyMembers] = useState<User[]>([])
+  const [progressData, setProgressData] = useState<UserProgress[]>([])
   const [initialLoading, setInitialLoading] = useState(true)
   const [period, setPeriod] = useState<TimePeriod>('today')
-  const [hoveredPerson, setHoveredPerson] = useState<Person | null>(null)
+  const [hoveredUserId, setHoveredUserId] = useState<string | null>(null)
   const [showAlertModal, setShowAlertModal] = useState(false)
   const [showLongTermForm, setShowLongTermForm] = useState(false)
-  const [selectedPersonForTask, setSelectedPersonForTask] = useState<Person | null>(null)
+  const [selectedUserForTask, setSelectedUserForTask] = useState<User | null>(null)
 
+  // Fetch family members on mount
+  useEffect(() => {
+    async function fetchFamilyMembers() {
+      try {
+        const response = await fetch('/api/families')
+        const data = await response.json()
+
+        // Collect all unique users from all families
+        const usersMap = new Map<string, User>()
+        for (const family of data.families || []) {
+          for (const member of family.members || []) {
+            if (member.user) {
+              usersMap.set(member.user.id, member.user)
+            }
+          }
+        }
+
+        // Also get current user if not in a family
+        const userResponse = await fetch('/api/users')
+        const userData = await userResponse.json()
+        if (userData.profile) {
+          usersMap.set(userData.profile.id, userData.profile)
+        }
+
+        setFamilyMembers(Array.from(usersMap.values()))
+      } catch (error) {
+        console.error('Failed to fetch family members:', error)
+      }
+    }
+
+    fetchFamilyMembers()
+  }, [])
+
+  // Fetch progress stats
   useEffect(() => {
     async function fetchProgress() {
+      if (familyMembers.length === 0) {
+        setInitialLoading(false)
+        return
+      }
+
       try {
         const response = await fetch(`/api/stats?period=${period}`)
         const data = await response.json()
 
-        const progress: PersonProgress[] = data.stats.map((s: { person: Person; done: number; total: number; ratio: number }) => ({
-          person: s.person,
-          done: s.done,
-          total: s.total,
-          percentage: Math.round(s.ratio * 100),
-        }))
+        // Map stats to our progress format
+        const progress: UserProgress[] =
+          data.stats?.map((s: { user_id: string; done: number; total: number; ratio: number }) => {
+            const user = familyMembers.find((u) => u.id === s.user_id)
+            return {
+              user: user || { id: s.user_id, display_name: 'Unknown', email: '', avatar_url: null, cycle_weeks: 1, cycle_start_date: '', is_superadmin: false, created_at: '' },
+              done: s.done,
+              total: s.total,
+              percentage: Math.round(s.ratio * 100),
+            }
+          }) || []
 
         setProgressData(progress)
       } catch (error) {
@@ -141,7 +178,7 @@ export default function HomePage() {
     }
 
     fetchProgress()
-  }, [period])
+  }, [period, familyMembers])
 
   // Auto-cycle through periods
   useEffect(() => {
@@ -166,26 +203,21 @@ export default function HomePage() {
     })
   }
 
-  const handleCreateLongTermTask = async (data: {
-    title: string
-    category: ActivityType
-    due_date?: string
-    default_estimate_minutes?: number
-  }) => {
-    if (!selectedPersonForTask) return
+  const handleCreateLongTermTask = async (data: { title: string; category: ActivityType; due_date?: string; default_estimate_minutes?: number }) => {
+    if (!selectedUserForTask) return
 
     try {
       await fetch('/api/long-term-tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, person: selectedPersonForTask }),
+        body: JSON.stringify({ ...data, user_id: selectedUserForTask.id }),
       })
     } catch (error) {
       console.error('Failed to create task:', error)
     }
 
     setShowLongTermForm(false)
-    setSelectedPersonForTask(null)
+    setSelectedUserForTask(null)
   }
 
   return (
@@ -211,10 +243,7 @@ export default function HomePage() {
         {/* Right nav */}
         <div className="flex items-center gap-3">
           <div className="inline-flex items-center rounded-full bg-gray-800/50 px-4 py-2 backdrop-blur-sm border border-gray-700">
-            <Link
-              href="/leaderboard"
-              className="text-gray-400 hover:text-white transition-colors px-3"
-            >
+            <Link href="/leaderboard" className="text-gray-400 hover:text-white transition-colors px-3">
               Leaderboard
             </Link>
             <span className="text-gray-600">|</span>
@@ -230,13 +259,13 @@ export default function HomePage() {
               Logout
             </button>
           </div>
-          <Link
-            href="/admin"
-            className="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-700/50"
-            title="Settings"
-          >
+          <Link href="/admin" className="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-700/50" title="Settings">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"
+              />
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             </svg>
           </Link>
@@ -255,100 +284,90 @@ export default function HomePage() {
           }}
         >
           <h1 className="text-7xl font-light">
-            <span className="bg-gradient-to-r from-blue-400 via-emerald-400 to-amber-400 bg-clip-text text-transparent">
-              Say
-            </span>
-            <span className="font-black bg-gradient-to-r from-amber-400 via-emerald-400 to-blue-400 bg-clip-text text-transparent">
-              Do
-            </span>
+            <span className="bg-gradient-to-r from-blue-400 via-emerald-400 to-amber-400 bg-clip-text text-transparent">Say</span>
+            <span className="font-black bg-gradient-to-r from-amber-400 via-emerald-400 to-blue-400 bg-clip-text text-transparent">Do</span>
             <span className="text-gray-400 ml-4">Central</span>
           </h1>
         </div>
 
-        {/* Person cards */}
-        <div className="grid grid-cols-3 gap-6 mb-12">
-          {ALL_PERSONS.map((person) => {
-            const colors = CHART_COLORS[person]
-            const isHovered = hoveredPerson === person
-            return (
-              <Link
-                key={person}
-                href={`/${person.toLowerCase()}`}
-                onMouseEnter={() => setHoveredPerson(person)}
-                onMouseLeave={() => setHoveredPerson(null)}
-                className={`relative overflow-hidden flex flex-col items-center justify-center
-                  w-52 h-60 rounded-3xl transition-all duration-300
-                  ${isHovered ? 'scale-110 z-10' : ''}`}
-                style={{
-                  background: `linear-gradient(135deg, ${colors.gradient[0]}22, ${colors.gradient[2]}44)`,
-                  boxShadow: isHovered
-                    ? `0 25px 50px -10px ${colors.main}66, 0 0 80px -15px ${colors.main}44`
-                    : `0 15px 40px -10px ${colors.main}33`,
-                  border: `1px solid ${colors.gradient[0]}44`,
-                }}
-              >
-                {/* Glow effect */}
-                <div
-                  className="absolute inset-0 opacity-30"
+        {/* User cards */}
+        {familyMembers.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {familyMembers.map((user, index) => {
+              const colors = getUserColor(index)
+              const isHovered = hoveredUserId === user.id
+              return (
+                <Link
+                  key={user.id}
+                  href={`/person/${user.id}`}
+                  onMouseEnter={() => setHoveredUserId(user.id)}
+                  onMouseLeave={() => setHoveredUserId(null)}
+                  className={`relative overflow-hidden flex flex-col items-center justify-center
+                    w-52 h-60 rounded-3xl transition-all duration-300
+                    ${isHovered ? 'scale-110 z-10' : ''}`}
                   style={{
-                    background: `radial-gradient(circle at 50% 30%, ${colors.main}, transparent 60%)`,
+                    background: `linear-gradient(135deg, rgba(96,165,250,0.1), rgba(30,64,175,0.2))`,
+                    boxShadow: isHovered ? `0 25px 50px -10px rgba(96,165,250,0.4)` : `0 15px 40px -10px rgba(96,165,250,0.2)`,
+                    border: `1px solid rgba(96,165,250,0.2)`,
                   }}
-                />
-
-                <div className="relative z-10">
-                  <PersonAvatar person={person} />
-                  <div className="text-2xl font-bold text-white mt-4 text-center">{person}</div>
-                </div>
-
-                {/* Bottom accent bar */}
-                <div className="absolute bottom-0 left-0 right-0 h-1">
+                >
+                  {/* Glow effect */}
                   <div
-                    className="h-full w-full"
+                    className="absolute inset-0 opacity-30"
                     style={{
-                      background: `linear-gradient(90deg, transparent, ${colors.gradient[0]}, ${colors.gradient[2]}, transparent)`,
+                      background: `radial-gradient(circle at 50% 30%, rgba(96,165,250,0.5), transparent 60%)`,
                     }}
                   />
-                </div>
-              </Link>
-            )
-          })}
-        </div>
 
-        {/* Alert Modal */}
-        {showAlertModal && (
-          <SendAlertModal onClose={() => setShowAlertModal(false)} />
+                  <div className="relative z-10">
+                    <UserAvatar user={user} index={index} />
+                    <div className="text-2xl font-bold text-white mt-4 text-center">{user.display_name}</div>
+                  </div>
+
+                  {/* Bottom accent bar */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1">
+                    <div className={`h-full w-full bg-gradient-to-r ${colors.gradient}`} style={{ opacity: 0.5 }} />
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="text-center text-gray-400 mb-12">
+            <p>No family members yet.</p>
+            <Link href="/admin" className="text-blue-400 hover:text-blue-300 underline">
+              Create or join a family
+            </Link>
+          </div>
         )}
 
-        {/* Person selector for Long Term task */}
-        {showLongTermForm && !selectedPersonForTask && (
+        {/* Alert Modal */}
+        {showAlertModal && <SendAlertModal onClose={() => setShowAlertModal(false)} />}
+
+        {/* User selector for Long Term task */}
+        {showLongTermForm && !selectedUserForTask && familyMembers.length > 0 && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-700 p-6">
-              <h2 className="text-xl font-bold text-white mb-4 text-center">
-                Create Long Term Task for...
-              </h2>
+              <h2 className="text-xl font-bold text-white mb-4 text-center">Create Long Term Task for...</h2>
               <div className="grid grid-cols-3 gap-4">
-                {ALL_PERSONS.map((person) => {
-                  const colors = CHART_COLORS[person]
+                {familyMembers.map((user, index) => {
+                  const colors = getUserColor(index)
                   return (
                     <button
-                      key={person}
-                      onClick={() => setSelectedPersonForTask(person)}
-                      className="flex flex-col items-center gap-2 p-4 rounded-xl transition-all hover:scale-105"
+                      key={user.id}
+                      onClick={() => setSelectedUserForTask(user)}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all hover:scale-105 bg-gradient-to-br ${colors.gradient} bg-opacity-20`}
                       style={{
-                        background: `linear-gradient(135deg, ${colors.gradient[0]}22, ${colors.gradient[2]}44)`,
-                        border: `1px solid ${colors.gradient[0]}44`,
+                        border: `1px solid rgba(96,165,250,0.2)`,
                       }}
                     >
-                      <PersonAvatar person={person} size="small" />
-                      <span className="text-white font-medium">{person}</span>
+                      <UserAvatar user={user} index={index} size="small" />
+                      <span className="text-white font-medium">{user.display_name}</span>
                     </button>
                   )
                 })}
               </div>
-              <button
-                onClick={() => setShowLongTermForm(false)}
-                className="w-full mt-4 py-2 text-gray-400 hover:text-white transition-colors"
-              >
+              <button onClick={() => setShowLongTermForm(false)} className="w-full mt-4 py-2 text-gray-400 hover:text-white transition-colors">
                 Cancel
               </button>
             </div>
@@ -356,61 +375,63 @@ export default function HomePage() {
         )}
 
         {/* Long Term Task Form */}
-        {showLongTermForm && selectedPersonForTask && (
+        {showLongTermForm && selectedUserForTask && (
           <LongTermTaskForm
             onSave={handleCreateLongTermTask}
             onCancel={() => {
               setShowLongTermForm(false)
-              setSelectedPersonForTask(null)
+              setSelectedUserForTask(null)
             }}
           />
         )}
 
         {/* Progress with cycling periods */}
-        <div
-          className="w-full max-w-lg p-6 rounded-2xl mb-8"
-          style={{
-            background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
-            border: '1px solid rgba(255,255,255,0.1)',
-          }}
-        >
-          <button
-            onClick={handlePeriodClick}
-            className="w-full text-lg font-bold bg-gradient-to-r from-blue-400 via-emerald-400 to-amber-400 bg-clip-text text-transparent mb-6 text-center hover:opacity-80 transition-opacity cursor-pointer"
+        {progressData.length > 0 && (
+          <div
+            className="w-full max-w-lg p-6 rounded-2xl mb-8"
+            style={{
+              background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}
           >
-            {PERIOD_LABELS[period]}
-          </button>
-          {initialLoading ? (
-            <div className="text-center py-4">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {progressData.map((progress) => {
-                const sortedPercentages = [...new Set(progressData.map(p => p.percentage))].sort((a, b) => b - a)
-                const rank = sortedPercentages.indexOf(progress.percentage) + 1
-                return (
-                  <ProgressBar key={progress.person} progress={progress} rank={rank} />
-                )
-              })}
-            </div>
-          )}
-        </div>
+            <button
+              onClick={handlePeriodClick}
+              className="w-full text-lg font-bold bg-gradient-to-r from-blue-400 via-emerald-400 to-amber-400 bg-clip-text text-transparent mb-6 text-center hover:opacity-80 transition-opacity cursor-pointer"
+            >
+              {PERIOD_LABELS[period]}
+            </button>
+            {initialLoading ? (
+              <div className="text-center py-4">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {progressData.map((progress, index) => {
+                  const sortedPercentages = [...new Set(progressData.map((p) => p.percentage))].sort((a, b) => b - a)
+                  const rank = sortedPercentages.indexOf(progress.percentage) + 1
+                  return <ProgressBar key={progress.user.id} progress={progress} rank={rank} index={index} />
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Floating add button for Long Term tasks */}
-      <button
-        onClick={() => setShowLongTermForm(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full text-white text-3xl shadow-lg hover:scale-110 transition-transform z-20"
-        style={{
-          background: 'linear-gradient(135deg, #60A5FA, #1E40AF)',
-          boxShadow: '0 10px 30px rgba(59, 130, 246, 0.4)',
-        }}
-        title="Create Long Term Task"
-      >
-        +
-      </button>
+      {familyMembers.length > 0 && (
+        <button
+          onClick={() => setShowLongTermForm(true)}
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full text-white text-3xl shadow-lg hover:scale-110 transition-transform z-20"
+          style={{
+            background: 'linear-gradient(135deg, #60A5FA, #1E40AF)',
+            boxShadow: '0 10px 30px rgba(59, 130, 246, 0.4)',
+          }}
+          title="Create Long Term Task"
+        >
+          +
+        </button>
+      )}
     </div>
   )
 }
