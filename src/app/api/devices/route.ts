@@ -24,6 +24,7 @@ export async function POST(request: Request) {
     .from('devices')
     .insert({
       name: body.name,
+      fcm_token: body.fcm_token || null,
     })
     .select()
     .single()

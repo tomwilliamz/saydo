@@ -93,6 +93,7 @@ export const PERSON_AVATARS: Record<Person, string> = {
 export interface Device {
   id: string
   name: string
+  fcm_token: string | null
   last_active_at: string
   created_at: string
 }

@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Public paths that don't require authentication
-const PUBLIC_PATHS = ['/login', '/auth']
+const PUBLIC_PATHS = ['/login', '/auth', '/api/devices', '/api/alerts']
 
 // Paths that require auth but not a profile
 const AUTH_ONLY_PATHS = ['/onboarding', '/api/profile']

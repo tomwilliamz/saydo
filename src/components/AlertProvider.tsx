@@ -3,9 +3,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getStoredDeviceId, getStoredDeviceName, storeDevice, updateDeviceHeartbeat } from '@/lib/device'
+import { useFcm } from '@/hooks/useFcm'
 import type { Alert } from '@/lib/types'
 import DeviceSetup from './DeviceSetup'
 import AlertOverlay from './AlertOverlay'
+import NotificationPermission from './NotificationPermission'
 
 interface AlertContextValue {
   deviceId: string | null
@@ -33,8 +35,12 @@ export default function AlertProvider({ children }: AlertProviderProps) {
   const [deviceId, setDeviceId] = useState<string | null>(null)
   const [deviceName, setDeviceName] = useState<string | null>(null)
   const [showDeviceSetup, setShowDeviceSetup] = useState(false)
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false)
   const [activeAlert, setActiveAlert] = useState<Alert | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
+
+  // FCM hook for push notifications
+  const { permissionStatus, requestPermission } = useFcm(deviceId)
 
   // Initialize device from localStorage
   useEffect(() => {
@@ -145,6 +151,19 @@ export default function AlertProvider({ children }: AlertProviderProps) {
     setDeviceId(id)
     setDeviceName(name)
     setShowDeviceSetup(false)
+    // Show notification permission prompt after device setup
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      setShowNotificationPrompt(true)
+    }
+  }
+
+  const handleNotificationGranted = async () => {
+    await requestPermission()
+    setShowNotificationPrompt(false)
+  }
+
+  const handleNotificationDismissed = () => {
+    setShowNotificationPrompt(false)
   }
 
   const sendAlert = async (message: string, toDeviceId?: string | null) => {
@@ -200,8 +219,16 @@ export default function AlertProvider({ children }: AlertProviderProps) {
         <DeviceSetup onComplete={handleDeviceSetupComplete} />
       )}
 
+      {/* Notification permission prompt */}
+      {showNotificationPrompt && !showDeviceSetup && (
+        <NotificationPermission
+          onGranted={handleNotificationGranted}
+          onDismissed={handleNotificationDismissed}
+        />
+      )}
+
       {/* Alert overlay */}
-      {activeAlert && !showDeviceSetup && (
+      {activeAlert && !showDeviceSetup && !showNotificationPrompt && (
         <AlertOverlay alert={activeAlert} onDismiss={dismissAlert} />
       )}
     </AlertContext.Provider>

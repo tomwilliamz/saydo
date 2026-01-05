@@ -17,6 +17,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Say Do - Family Activity Tracker",
   description: "Track family chores and activities with accountability",
+  manifest: "/manifest.json",
+  themeColor: "#3b82f6",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Say Do",
+  },
 };
 
 export default function RootLayout({

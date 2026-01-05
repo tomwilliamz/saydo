@@ -60,3 +60,11 @@ export async function fetchAllDevices(): Promise<Device[]> {
   if (!response.ok) return []
   return response.json()
 }
+
+export async function updateDeviceFcmToken(id: string, fcmToken: string): Promise<void> {
+  await fetch(`/api/devices/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fcm_token: fcmToken }),
+  })
+}

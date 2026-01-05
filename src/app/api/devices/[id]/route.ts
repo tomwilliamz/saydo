@@ -32,6 +32,7 @@ export async function PUT(
   const updates: Record<string, unknown> = {}
   if (body.name !== undefined) updates.name = body.name
   if (body.heartbeat) updates.last_active_at = new Date().toISOString()
+  if (body.fcm_token !== undefined) updates.fcm_token = body.fcm_token
 
   const { data, error } = await supabase
     .from('devices')
