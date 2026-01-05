@@ -306,16 +306,16 @@ export default function HomePage() {
                     w-52 h-60 rounded-3xl transition-all duration-300
                     ${isHovered ? 'scale-110 z-10' : ''}`}
                   style={{
-                    background: `linear-gradient(135deg, rgba(96,165,250,0.1), rgba(30,64,175,0.2))`,
-                    boxShadow: isHovered ? `0 25px 50px -10px rgba(96,165,250,0.4)` : `0 15px 40px -10px rgba(96,165,250,0.2)`,
-                    border: `1px solid rgba(96,165,250,0.2)`,
+                    background: `linear-gradient(135deg, rgba(${colors.rgb},0.15), rgba(${colors.rgb},0.05))`,
+                    boxShadow: isHovered ? `0 25px 50px -10px rgba(${colors.rgb},0.5)` : `0 15px 40px -10px rgba(${colors.rgb},0.25)`,
+                    border: `1px solid rgba(${colors.rgb},0.3)`,
                   }}
                 >
                   {/* Glow effect */}
                   <div
-                    className="absolute inset-0 opacity-30"
+                    className="absolute inset-0 opacity-40"
                     style={{
-                      background: `radial-gradient(circle at 50% 30%, rgba(96,165,250,0.5), transparent 60%)`,
+                      background: `radial-gradient(circle at 50% 30%, rgba(${colors.rgb},0.6), transparent 60%)`,
                     }}
                   />
 
@@ -326,7 +326,7 @@ export default function HomePage() {
 
                   {/* Bottom accent bar */}
                   <div className="absolute bottom-0 left-0 right-0 h-1">
-                    <div className={`h-full w-full bg-gradient-to-r ${colors.gradient}`} style={{ opacity: 0.5 }} />
+                    <div className={`h-full w-full bg-gradient-to-r ${colors.gradient}`} />
                   </div>
                 </Link>
               )

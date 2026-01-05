@@ -170,12 +170,12 @@ export const TYPE_COLORS: Record<ActivityType, string> = {
 
 // Default user colors (for users without custom colors)
 export const DEFAULT_USER_COLORS = [
-  { bg: 'bg-blue-500', text: 'text-blue-700', border: 'border-blue-500', gradient: 'from-blue-500 to-blue-700' },
-  { bg: 'bg-green-500', text: 'text-green-700', border: 'border-green-500', gradient: 'from-green-500 to-green-700' },
-  { bg: 'bg-orange-500', text: 'text-orange-700', border: 'border-orange-500', gradient: 'from-orange-500 to-orange-700' },
-  { bg: 'bg-purple-500', text: 'text-purple-700', border: 'border-purple-500', gradient: 'from-purple-500 to-purple-700' },
-  { bg: 'bg-pink-500', text: 'text-pink-700', border: 'border-pink-500', gradient: 'from-pink-500 to-pink-700' },
-  { bg: 'bg-cyan-500', text: 'text-cyan-700', border: 'border-cyan-500', gradient: 'from-cyan-500 to-cyan-700' },
+  { bg: 'bg-blue-500', text: 'text-blue-700', border: 'border-blue-500', gradient: 'from-blue-500 to-blue-700', rgb: '59, 130, 246' },
+  { bg: 'bg-green-500', text: 'text-green-700', border: 'border-green-500', gradient: 'from-green-500 to-green-700', rgb: '34, 197, 94' },
+  { bg: 'bg-orange-500', text: 'text-orange-700', border: 'border-orange-500', gradient: 'from-orange-500 to-orange-700', rgb: '249, 115, 22' },
+  { bg: 'bg-purple-500', text: 'text-purple-700', border: 'border-purple-500', gradient: 'from-purple-500 to-purple-700', rgb: '168, 85, 247' },
+  { bg: 'bg-pink-500', text: 'text-pink-700', border: 'border-pink-500', gradient: 'from-pink-500 to-pink-700', rgb: '236, 72, 153' },
+  { bg: 'bg-cyan-500', text: 'text-cyan-700', border: 'border-cyan-500', gradient: 'from-cyan-500 to-cyan-700', rgb: '6, 182, 212' },
 ]
 
 // Get color for user based on index (consistent across app)

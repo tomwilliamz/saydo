@@ -34,8 +34,8 @@ export async function GET() {
   return NextResponse.json({ users })
 }
 
-// POST to create a new user (pre-create before they login)
-// Any authenticated user can create new users
+// POST to create a new user and add to family (or add existing user to family)
+// Any authenticated user can create new users in their families
 export async function POST(request: Request) {
   const supabase = await createClient()
 
@@ -49,10 +49,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { email, display_name, avatar_url, cycle_weeks = 1 } = body
+  const { email, display_name, avatar_url, cycle_weeks = 1, family_id } = body
 
   if (!email || !email.includes('@')) {
     return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
+  }
+
+  if (!family_id) {
+    return NextResponse.json({ error: 'Family ID is required' }, { status: 400 })
   }
 
   if (!display_name || display_name.trim().length === 0) {
@@ -63,33 +67,64 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Cycle weeks must be between 1 and 4' }, { status: 400 })
   }
 
-  // Check if user with this email already exists
-  const { data: existingUser } = await supabase.from('users').select('id').eq('email', email.toLowerCase()).single()
-
-  if (existingUser) {
-    return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 })
-  }
-
-  // Create the user with a placeholder UUID (will be updated when they actually login)
-  // The id will be replaced with their actual auth.users id when they login
-  const { data: newUser, error } = await supabase
-    .from('users')
-    .insert({
-      id: crypto.randomUUID(), // Placeholder - will be updated on first login
-      email: email.toLowerCase().trim(),
-      display_name: display_name.trim(),
-      avatar_url: avatar_url || null,
-      cycle_weeks,
-      cycle_start_date: new Date().toISOString().split('T')[0],
-    })
-    .select()
-    .single()
+  // Use the SECURITY DEFINER function to create user and add to family
+  const { data: result, error } = await supabase.rpc('create_user_in_family', {
+    p_email: email,
+    p_display_name: display_name,
+    p_family_id: family_id,
+    p_avatar_url: avatar_url || null,
+    p_cycle_weeks: cycle_weeks,
+  })
 
   if (error) {
+    if (error.message.includes('not a member')) {
+      return NextResponse.json({ error: 'You are not a member of this family' }, { status: 403 })
+    }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ user: newUser })
+  const newUser = result[0]
+  return NextResponse.json({
+    user: newUser,
+    already_existed: newUser.already_existed,
+  })
+}
+
+// PATCH to update a family member's profile
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body = await request.json()
+  const { user_id, display_name, avatar_url } = body
+
+  if (!user_id) {
+    return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+  }
+
+  // Use the SECURITY DEFINER function to update family member
+  const { data: result, error } = await supabase.rpc('update_family_member', {
+    p_user_id: user_id,
+    p_display_name: display_name || null,
+    p_avatar_url: avatar_url !== undefined ? avatar_url : null,
+  })
+
+  if (error) {
+    if (error.message.includes('not in the same family')) {
+      return NextResponse.json({ error: 'You are not in the same family as this user' }, { status: 403 })
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ user: result[0] })
 }
 
 // DELETE a user

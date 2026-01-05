@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { User, Family, getUserColor } from '@/lib/types'
+import { createClient } from '@/lib/supabase/client'
 
 interface FamilyWithMembers extends Family {
   members: { user_id: string; user: User }[]
@@ -26,7 +27,12 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [showCreateFamily, setShowCreateFamily] = useState(false)
   const [showJoinFamily, setShowJoinFamily] = useState(false)
-  const [showCreateUser, setShowCreateUser] = useState(false)
+  const [showCreateUser, setShowCreateUser] = useState<string | null>(null) // family_id or null
+  const [editingMember, setEditingMember] = useState<User | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editAvatar, setEditAvatar] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [newFamilyName, setNewFamilyName] = useState('')
   const [inviteCode, setInviteCode] = useState('')
   const [newUserEmail, setNewUserEmail] = useState('')
@@ -137,6 +143,8 @@ export default function AdminPage() {
     e.preventDefault()
     setError(null)
 
+    if (!showCreateUser) return
+
     try {
       const res = await fetch('/api/users/admin', {
         method: 'POST',
@@ -146,6 +154,7 @@ export default function AdminPage() {
           display_name: newUserName,
           avatar_url: newUserAvatar || null,
           cycle_weeks: newUserCycleWeeks,
+          family_id: showCreateUser,
         }),
       })
 
@@ -156,8 +165,12 @@ export default function AdminPage() {
         return
       }
 
-      setSuccess(`Created user "${data.user.display_name}" - they can now login with ${data.user.email}`)
-      setShowCreateUser(false)
+      if (data.already_existed) {
+        setSuccess(`Added "${data.user.display_name}" to the family`)
+      } else {
+        setSuccess(`Created "${data.user.display_name}" and added to family - they can login with ${data.user.email}`)
+      }
+      setShowCreateUser(null)
       setNewUserEmail('')
       setNewUserName('')
       setNewUserAvatar('')
@@ -165,6 +178,90 @@ export default function AdminPage() {
       fetchData()
     } catch {
       setError('Failed to create user')
+    }
+  }
+
+  const handleEditMember = (member: User) => {
+    setEditingMember(member)
+    setEditName(member.display_name)
+    setEditAvatar(member.avatar_url || '')
+  }
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !editingMember) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Image must be less than 2MB')
+      return
+    }
+
+    setUploading(true)
+    setError(null)
+
+    try {
+      const supabase = createClient()
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${editingMember.id}/${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true })
+
+      if (uploadError) {
+        setError(uploadError.message)
+        return
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName)
+
+      setEditAvatar(publicUrl)
+    } catch {
+      setError('Failed to upload image')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleUpdateMember = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingMember) return
+    setError(null)
+
+    try {
+      const res = await fetch('/api/users/admin', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: editingMember.id,
+          display_name: editName,
+          avatar_url: editAvatar || null,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error)
+        return
+      }
+
+      setSuccess(`Updated "${data.user.display_name}"`)
+      setEditingMember(null)
+      setEditName('')
+      setEditAvatar('')
+      fetchData()
+    } catch {
+      setError('Failed to update member')
     }
   }
 
@@ -289,12 +386,6 @@ export default function AdminPage() {
             <h2 className="text-lg font-semibold text-white">Your Families</h2>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowCreateUser(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors text-sm"
-              >
-                + Add User
-              </button>
-              <button
                 onClick={() => setShowJoinFamily(true)}
                 className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
               >
@@ -334,14 +425,26 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2 mt-3">
                     <span className="text-gray-400 text-sm">Members:</span>
                     {family.members.map((member, idx) => (
-                      <div
+                      <button
                         key={member.user_id}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold bg-gradient-to-br ${getUserColor(idx).gradient}`}
-                        title={member.user?.display_name}
+                        onClick={() => member.user && handleEditMember(member.user)}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold bg-gradient-to-br ${getUserColor(idx).gradient} hover:ring-2 hover:ring-white/50 transition-all cursor-pointer overflow-hidden`}
+                        title={`Edit ${member.user?.display_name}`}
                       >
-                        {member.user?.display_name?.[0]?.toUpperCase() || '?'}
-                      </div>
+                        {member.user?.avatar_url ? (
+                          <img src={member.user.avatar_url} alt={member.user.display_name} className="w-full h-full object-cover" />
+                        ) : (
+                          member.user?.display_name?.[0]?.toUpperCase() || '?'
+                        )}
+                      </button>
                     ))}
+                    <button
+                      onClick={() => setShowCreateUser(family.id)}
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700 border border-dashed border-gray-600 transition-colors"
+                      title="Add member"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
               ))}
@@ -477,13 +580,13 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Create User Modal */}
+      {/* Add Member Modal */}
       {showCreateUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <form onSubmit={handleCreateUser} className="bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4">Create a User</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Add Member to Family</h2>
             <p className="text-gray-400 text-sm mb-4">
-              Create a user account. When they login with this email, their account will automatically be linked.
+              Add a new member. If the email already exists, they'll be added to this family. Otherwise, a new account will be created.
             </p>
 
             <div className="space-y-4 mb-6">
@@ -530,7 +633,7 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setShowCreateUser(false)
+                  setShowCreateUser(null)
                   setNewUserEmail('')
                   setNewUserName('')
                   setNewUserAvatar('')
@@ -545,7 +648,91 @@ export default function AdminPage() {
                 disabled={!newUserEmail.trim() || !newUserName.trim()}
                 className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors disabled:opacity-50"
               >
-                Create User
+                Add Member
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Member Modal */}
+      {editingMember && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <form onSubmit={handleUpdateMember} className="bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl border border-gray-700">
+            <h2 className="text-xl font-bold text-white mb-4">Edit Member</h2>
+
+            <div className="flex justify-center mb-6">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="group relative"
+                >
+                  {editAvatar ? (
+                    <img src={editAvatar} alt={editName} className="w-24 h-24 rounded-full object-cover" />
+                  ) : (
+                    <div className={`w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold bg-gradient-to-br ${getUserColor(0).gradient}`}>
+                      {editName[0]?.toUpperCase() || '?'}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {uploading ? (
+                      <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
+                    ) : (
+                      <span className="text-white text-sm">Upload</span>
+                    )}
+                  </div>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-gray-400 text-sm block mb-1">Display Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Display name"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                  autoFocus
+                  required
+                />
+              </div>
+              <p className="text-gray-500 text-xs text-center">
+                Click the avatar above to upload a new image
+              </p>
+              <p className="text-gray-500 text-xs">
+                Email: {editingMember.email}
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingMember(null)
+                  setEditName('')
+                  setEditAvatar('')
+                }}
+                className="flex-1 py-2 text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!editName.trim()}
+                className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50"
+              >
+                Save Changes
               </button>
             </div>
           </form>
