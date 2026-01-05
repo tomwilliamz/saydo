@@ -82,9 +82,35 @@ export const TYPE_COLORS: Record<ActivityType, string> = {
 // All persons array for iteration
 export const ALL_PERSONS: Person[] = ['Thomas', 'Ivor', 'Axel']
 
-// Person avatars (stored in /public/avatars/)
+// Person avatars (stored in /public/avatar/)
 export const PERSON_AVATARS: Record<Person, string> = {
-  Thomas: '/avatars/thomas.jpg',
-  Ivor: '/avatars/ivor.jpg',
-  Axel: '/avatars/axel.jpg',
+  Thomas: '/avatar/tom.jpg',
+  Ivor: '/avatar/ivor.jpg',
+  Axel: '/avatar/axel.jpg',
+}
+
+// Device for multi-device communication
+export interface Device {
+  id: string
+  name: string
+  last_active_at: string
+  created_at: string
+}
+
+// Alert status
+export type AlertStatus = 'active' | 'dismissed' | 'expired'
+
+// Alert for device-to-device messaging
+export interface Alert {
+  id: string
+  from_device_id: string | null
+  to_device_id: string | null  // null = broadcast to all
+  message: string
+  status: AlertStatus
+  created_at: string
+  expires_at: string
+  dismissed_at: string | null
+  dismissed_by_device_id: string | null
+  // Joined fields
+  from_device?: Device
 }

@@ -74,6 +74,43 @@ export default function TaskRow({
   }
 
   const renderExpandedActions = () => {
+    // Button styles
+    const startButtonClass = `px-10 py-4 text-white rounded-2xl text-xl font-bold
+      bg-gradient-to-r from-blue-500 to-indigo-600
+      hover:from-blue-600 hover:to-indigo-700
+      shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40
+      hover:scale-105 transition-all active:scale-95`
+
+    const pauseButtonClass = darkMode
+      ? `px-6 py-3 rounded-2xl text-lg font-semibold
+          bg-gray-700/50 text-gray-200 border border-gray-600/50
+          hover:bg-gray-600/50 transition-all`
+      : `px-6 py-3 bg-gray-200 text-gray-700 rounded-2xl text-lg font-semibold
+          hover:bg-gray-300 transition-colors`
+
+    const doneButtonClass = `px-8 py-4 text-white rounded-2xl text-xl font-bold
+      bg-gradient-to-r from-emerald-500 to-green-600
+      hover:from-emerald-600 hover:to-green-700
+      shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40
+      hover:scale-105 transition-all active:scale-95`
+
+    const doneButtonSmallClass = `px-6 py-3 text-white rounded-2xl text-lg font-semibold
+      bg-gradient-to-r from-emerald-500 to-green-600
+      hover:from-emerald-600 hover:to-green-700
+      shadow-md shadow-emerald-500/20 hover:shadow-lg
+      transition-all active:scale-95`
+
+    const skipButtonClass = darkMode
+      ? `px-6 py-3 rounded-2xl text-lg font-semibold
+          bg-gray-700/50 text-gray-300 border border-gray-600/50
+          hover:bg-gray-600/50 transition-all`
+      : `px-6 py-3 bg-gray-200 text-gray-600 rounded-2xl text-lg font-semibold
+          hover:bg-gray-300 transition-colors`
+
+    const resetLinkClass = darkMode
+      ? 'text-sm text-gray-400 hover:text-gray-200 underline transition-colors'
+      : 'text-sm text-gray-500 hover:text-gray-700 underline'
+
     // Started - show timer, Pause, Done, and Reset
     if (status === 'started' && completion?.started_at) {
       return (
@@ -81,21 +118,19 @@ export default function TaskRow({
           <Timer startedAt={completion.started_at} elapsedMs={completion.elapsed_ms || 0} />
           <button
             onClick={(e) => { e.stopPropagation(); onStop(); }}
-            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-2xl text-lg font-semibold
-              hover:bg-gray-300 transition-colors"
+            className={pauseButtonClass}
           >
             Pause
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDone(); }}
-            className="px-6 py-3 bg-green-500 text-white rounded-2xl text-lg font-semibold
-              hover:bg-green-600 transition-colors"
+            className={doneButtonSmallClass}
           >
             Done
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onReset(); }}
-            className="text-sm text-gray-500 hover:text-gray-700 underline"
+            className={resetLinkClass}
           >
             Reset
           </button>
@@ -107,28 +142,24 @@ export default function TaskRow({
     if (status === 'stopped') {
       return (
         <div className="flex items-center gap-4">
-          <span className="font-mono text-2xl font-semibold text-gray-500">
+          <span className={`font-mono text-2xl font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
             {formatDuration(completion?.elapsed_ms || 0)} paused
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); onResume(); }}
-            className="px-8 py-4 text-white rounded-2xl text-xl font-bold
-              bg-gradient-to-r from-blue-500 to-blue-600
-              hover:from-blue-600 hover:to-blue-700
-              shadow-lg hover:shadow-xl transition-all"
+            className={startButtonClass}
           >
             Resume
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDone(); }}
-            className="px-6 py-3 bg-green-500 text-white rounded-2xl text-lg font-semibold
-              hover:bg-green-600 transition-colors"
+            className={doneButtonSmallClass}
           >
             Done
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onReset(); }}
-            className="text-sm text-gray-500 hover:text-gray-700 underline"
+            className={resetLinkClass}
           >
             Reset
           </button>
@@ -136,21 +167,19 @@ export default function TaskRow({
       )
     }
 
-    // Not started - show Start and Skip
+    // Not started - show Start and Skip (or Done and Skip for past dates)
     if (isPastDate) {
       return (
         <div className="flex gap-3">
           <button
             onClick={(e) => { e.stopPropagation(); onDone(); }}
-            className="px-8 py-4 bg-green-500 text-white rounded-2xl text-xl font-bold
-              hover:bg-green-600 transition-colors shadow-lg"
+            className={doneButtonClass}
           >
             Done
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onSkip(); }}
-            className="px-6 py-3 bg-gray-200 text-gray-600 rounded-2xl text-lg font-semibold
-              hover:bg-gray-300 transition-colors"
+            className={skipButtonClass}
           >
             Skip
           </button>
@@ -162,17 +191,13 @@ export default function TaskRow({
       <div className="flex gap-3">
         <button
           onClick={(e) => { e.stopPropagation(); onStart(); }}
-          className="px-10 py-4 text-white rounded-2xl text-xl font-bold
-            bg-gradient-to-r from-blue-500 to-blue-600
-            hover:from-blue-600 hover:to-blue-700
-            shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+          className={startButtonClass}
         >
           Start
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onSkip(); }}
-          className="px-6 py-3 bg-gray-200 text-gray-600 rounded-2xl text-lg font-semibold
-            hover:bg-gray-300 transition-colors"
+          className={skipButtonClass}
         >
           Skip
         </button>
@@ -181,22 +206,28 @@ export default function TaskRow({
   }
 
   const renderCompactStatus = () => {
+    const linkClass = darkMode
+      ? 'text-sm text-gray-400 hover:text-gray-200 underline transition-colors'
+      : 'text-sm text-gray-500 hover:text-gray-700 underline'
+
     if (status === 'done') {
       const hasDuration = completion?.elapsed_ms && completion.elapsed_ms > 0
       return (
         <div className="flex items-center gap-3">
-          <span className="text-green-700 font-medium">{getDoneMessage()}</span>
+          <span className={darkMode ? 'text-emerald-400 font-medium' : 'text-green-700 font-medium'}>
+            {getDoneMessage()}
+          </span>
           {onEditDuration && (
             <button
               onClick={(e) => { e.stopPropagation(); onEditDuration(); }}
-              className="text-sm text-gray-500 hover:text-gray-700 underline"
+              className={linkClass}
             >
               {hasDuration ? 'Edit duration' : 'Add duration'}
             </button>
           )}
           <button
             onClick={(e) => { e.stopPropagation(); onUndo(); }}
-            className="text-sm text-gray-500 hover:text-gray-700 underline"
+            className={linkClass}
           >
             Undo
           </button>
@@ -207,10 +238,12 @@ export default function TaskRow({
     if (status === 'skipped') {
       return (
         <div className="flex items-center gap-3">
-          <span className="text-gray-600 font-medium">Skipped</span>
+          <span className={darkMode ? 'text-gray-400 font-medium' : 'text-gray-600 font-medium'}>
+            Skipped
+          </span>
           <button
             onClick={(e) => { e.stopPropagation(); onUndo(); }}
-            className="text-sm text-gray-500 hover:text-gray-700 underline"
+            className={linkClass}
           >
             Undo
           </button>
@@ -224,14 +257,14 @@ export default function TaskRow({
 
     if (status === 'stopped') {
       return (
-        <span className="font-mono text-lg font-semibold text-gray-500">
+        <span className={`font-mono text-lg font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
           {formatDuration(completion?.elapsed_ms || 0)} paused
         </span>
       )
     }
 
     return (
-      <span className="text-gray-400 text-sm">
+      <span className={darkMode ? 'text-gray-500 text-sm' : 'text-gray-400 text-sm'}>
         {activity.default_minutes} min
       </span>
     )

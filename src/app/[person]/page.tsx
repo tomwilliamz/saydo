@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { format } from 'date-fns'
 import confetti from 'canvas-confetti'
-import DateNav from '@/components/DateNav'
 import TaskRow from '@/components/TaskRow'
 import DurationModal from '@/components/DurationModal'
 import { DailyTask, Person, ALL_PERSONS } from '@/lib/types'
@@ -14,6 +14,7 @@ import {
   getTomorrow,
   getYesterday,
   isPast,
+  isToday,
   parseDate,
 } from '@/lib/utils'
 
@@ -56,6 +57,7 @@ export default function PersonPage() {
     task: DailyTask | null
     elapsedMinutes: number
   }>({ isOpen: false, task: null, elapsedMinutes: 0 })
+  const [showDatePicker, setShowDatePicker] = useState(false)
 
   const fetchTasks = useCallback(async (date: Date) => {
     if (!person) return
@@ -414,24 +416,17 @@ export default function PersonPage() {
       </div>
 
       {/* Sticky header with person name and date nav */}
-      <div className="sticky top-0 z-40">
+      <div className="sticky top-0 z-30">
         {/* Person header */}
         <div
-          className="text-white px-6 py-4 pb-12 relative overflow-hidden"
+          className="text-white px-6 py-3 pb-6 relative overflow-hidden"
           style={{
             background: `linear-gradient(135deg, ${colors.gradient[1]}, ${colors.gradient[2]})`,
           }}
         >
-          {/* Glow effect */}
-          <div
-            className="absolute inset-0 opacity-30"
-            style={{
-              background: `radial-gradient(circle at 50% 0%, ${colors.gradient[0]}, transparent 60%)`,
-            }}
-          />
-
           <div className="max-w-5xl mx-auto relative z-10">
-            <div className="flex items-center justify-between mb-2">
+            {/* Top row: Switch person, Trends/Admin */}
+            <div className="flex items-center justify-between mb-1">
               <Link
                 href="/"
                 className="text-white/70 hover:text-white text-sm transition-colors"
@@ -454,44 +449,97 @@ export default function PersonPage() {
                 </Link>
               </div>
             </div>
-            <div className="flex items-baseline justify-between">
-              <h1 className="text-5xl font-bold drop-shadow-lg">{person}</h1>
-              <div
-                className="text-5xl font-black px-5 py-2 rounded-2xl"
-                style={{
-                  background: 'rgba(0,0,0,0.3)',
-                  boxShadow: `0 0 30px ${colors.main}44`,
-                }}
-              >
-                {percentage}%
+            {/* Second row: Avatar + Name (left), Day (center), Percentage (right) */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1">
+                <div
+                  className="w-14 h-14 rounded-full p-0.5"
+                  style={{
+                    background: `linear-gradient(135deg, ${colors.gradient[0]}, ${colors.gradient[2]})`,
+                    boxShadow: `0 0 20px ${colors.main}66`,
+                  }}
+                >
+                  <img
+                    src={`/avatar/${person === 'Thomas' ? 'tom' : person.toLowerCase()}.jpg`}
+                    alt={person}
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                </div>
+                <span className="text-3xl font-bold text-white">{person}</span>
+              </div>
+              <span className="text-6xl font-bold text-white drop-shadow-lg">{format(currentDate, 'EEEE')}</span>
+              <div className="flex-1 flex justify-end">
+                <div
+                  className="text-3xl font-black px-4 py-1 rounded-xl"
+                  style={{
+                    background: 'rgba(0,0,0,0.3)',
+                    boxShadow: `0 0 30px ${colors.main}44`,
+                  }}
+                >
+                  {percentage}%
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Date navigation */}
+        {/* Date navigation - compact inline */}
         <div
-          className="px-6 shadow-xl rounded-t-[23%] relative z-10 -mt-8"
+          className="px-6 rounded-t-[20%] relative -mt-2"
           style={{
-            background: 'linear-gradient(135deg, rgb(30,41,59), rgb(15,23,42))',
-            borderTop: '1px solid rgba(255,255,255,0.1)',
+            background: `linear-gradient(135deg, ${colors.gradient[0]}, ${colors.gradient[1]})`,
           }}
         >
-          <div className="max-w-5xl mx-auto">
-            <DateNav
-              currentDate={currentDate}
-              onPrevious={() => handleDateChange(getYesterday(currentDate))}
-              onNext={() => handleDateChange(getTomorrow(currentDate))}
-              onToday={() => handleDateChange(new Date())}
-              onDateSelect={handleDateChange}
-              darkMode
-            />
+          <div className="max-w-5xl mx-auto py-2 flex items-center justify-center gap-4">
+            <button
+              onClick={() => handleDateChange(getYesterday(currentDate))}
+              className="text-white/70 hover:text-white transition-colors px-3 py-1 text-xl"
+            >
+              &larr;
+            </button>
+            <button
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              className="text-white font-medium hover:text-white/80 transition-colors flex items-center gap-2"
+            >
+              {format(currentDate, 'MMMM d, yyyy')}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+              </svg>
+            </button>
+            <button
+              onClick={() => handleDateChange(getTomorrow(currentDate))}
+              className="text-white/70 hover:text-white transition-colors px-3 py-1 text-xl"
+            >
+              &rarr;
+            </button>
+            {!isToday(currentDate) && (
+              <button
+                onClick={() => handleDateChange(new Date())}
+                className="text-xs text-white/50 hover:text-white transition-colors ml-2 px-2 py-1 rounded bg-black/20"
+              >
+                Today
+              </button>
+            )}
           </div>
+          {showDatePicker && (
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-50 rounded-lg shadow-lg p-2 bg-gray-800 border border-gray-700">
+              <input
+                type="date"
+                value={format(currentDate, 'yyyy-MM-dd')}
+                onChange={(e) => {
+                  handleDateChange(parseDate(e.target.value))
+                  setShowDatePicker(false)
+                }}
+                className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 border-gray-600 text-white"
+                autoFocus
+              />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Task list */}
-      <div className="flex-1 pb-32 relative z-10">
+      <div className="flex-1 pb-12 relative z-0">
         <div className="max-w-5xl mx-auto py-4 px-6">
           {loading ? (
             <div
@@ -592,7 +640,7 @@ export default function PersonPage() {
 
       {/* Bottom gradient fade */}
       <div
-        className="pointer-events-none fixed bottom-16 left-0 right-0 h-8"
+        className="pointer-events-none fixed bottom-4 left-0 right-0 h-8"
         style={{
           background: 'linear-gradient(to top, rgba(17,24,39,1), transparent)',
         }}
@@ -600,18 +648,11 @@ export default function PersonPage() {
 
       {/* Bottom accent bar */}
       <div
-        className="h-16 fixed bottom-0 left-0 right-0"
+        className="h-4 fixed bottom-0 left-0 right-0 z-20 rounded-t-full"
         style={{
           background: `linear-gradient(90deg, ${colors.gradient[0]}, ${colors.main}, ${colors.gradient[2]})`,
         }}
-      >
-        <div
-          className="h-12 rounded-b-[23%]"
-          style={{
-            background: 'linear-gradient(135deg, rgba(17,24,39,1), rgba(31,41,55,1))',
-          }}
-        />
-      </div>
+      />
     </div>
   )
 }
