@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { ALL_PERSONS, PERSON_COLORS, PERSON_AVATARS, Person } from '@/lib/types'
+import SendAlertModal from '@/components/SendAlertModal'
 
 interface PersonProgress {
   person: Person
@@ -113,6 +114,7 @@ export default function HomePage() {
   const [initialLoading, setInitialLoading] = useState(true)
   const [period, setPeriod] = useState<TimePeriod>('today')
   const [hoveredPerson, setHoveredPerson] = useState<Person | null>(null)
+  const [showAlertModal, setShowAlertModal] = useState(false)
 
   useEffect(() => {
     async function fetchProgress() {
@@ -171,7 +173,17 @@ export default function HomePage() {
       </div>
 
       {/* Header with nav links */}
-      <div className="flex justify-end p-6 relative z-10">
+      <div className="flex justify-between items-center p-6 relative z-30">
+        {/* Alert button - top left */}
+        <button
+          onClick={() => setShowAlertModal(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30 hover:from-red-500/30 hover:to-orange-500/30 transition-all hover:scale-105"
+        >
+          <span className="text-2xl">📢</span>
+          <span className="text-white font-medium">Alert</span>
+        </button>
+
+        {/* Right nav */}
         <div className="inline-flex rounded-full bg-gray-800/50 px-4 py-2 backdrop-blur-sm border border-gray-700">
           <Link
             href="/leaderboard"
@@ -185,6 +197,13 @@ export default function HomePage() {
             className="text-gray-400 hover:text-white transition-colors px-3"
           >
             Admin
+          </Link>
+          <span className="text-gray-600">|</span>
+          <Link
+            href="/login"
+            className="text-gray-400 hover:text-white transition-colors px-3"
+          >
+            Logout
           </Link>
         </div>
       </div>
@@ -259,6 +278,11 @@ export default function HomePage() {
             )
           })}
         </div>
+
+        {/* Alert Modal */}
+        {showAlertModal && (
+          <SendAlertModal onClose={() => setShowAlertModal(false)} />
+        )}
 
         {/* Progress with cycling periods */}
         <div
