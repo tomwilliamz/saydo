@@ -8,6 +8,15 @@ export async function GET(
   const { id } = await params
   const supabase = await createClient()
 
+  // Get authenticated user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { data, error } = await supabase
     .from('devices')
     .select('*')
@@ -27,6 +36,16 @@ export async function PUT(
 ) {
   const { id } = await params
   const supabase = await createClient()
+
+  // Get authenticated user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const body = await request.json()
 
   const updates: Record<string, unknown> = {}
@@ -54,6 +73,15 @@ export async function DELETE(
 ) {
   const { id } = await params
   const supabase = await createClient()
+
+  // Get authenticated user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const { error } = await supabase
     .from('devices')

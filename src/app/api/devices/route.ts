@@ -4,9 +4,39 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   const supabase = await createClient()
 
+  // Get authenticated user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Get user's family memberships
+  const { data: memberships } = await supabase
+    .from('family_members')
+    .select('family_id')
+    .eq('user_id', user.id)
+
+  const familyIds = memberships?.map((m) => m.family_id) || []
+
+  // Get all user_ids in user's families
+  let familyUserIds: string[] = [user.id]
+  if (familyIds.length > 0) {
+    const { data: familyMembers } = await supabase
+      .from('family_members')
+      .select('user_id')
+      .in('family_id', familyIds)
+
+    familyUserIds = [...new Set([user.id, ...(familyMembers?.map((m) => m.user_id) || [])])]
+  }
+
+  // Get devices owned by family members only
   const { data, error } = await supabase
     .from('devices')
     .select('*')
+    .in('user_id', familyUserIds)
     .order('name')
 
   if (error) {
@@ -18,6 +48,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const supabase = await createClient()
+
+  // Get authenticated user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const body = await request.json()
 
   const { data, error } = await supabase
@@ -25,6 +65,7 @@ export async function POST(request: Request) {
     .insert({
       name: body.name,
       fcm_token: body.fcm_token || null,
+      user_id: user.id,
     })
     .select()
     .single()
