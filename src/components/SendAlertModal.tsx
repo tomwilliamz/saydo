@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAlerts } from './AlertProvider'
 import { fetchAllDevices } from '@/lib/device'
 import { playUrgentChime } from '@/lib/audio'
+import { createClient } from '@/lib/supabase/client'
 import type { Device } from '@/lib/types'
 
 // Preset messages for quick sending
@@ -13,11 +14,19 @@ const PRESET_MESSAGES = [
   { label: 'Ivor! please get in the shower', message: 'Ivor! please get in the shower', emoji: '🚿' },
 ]
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+const TEN_MINUTES_MS = 10 * 60 * 1000
+
 // Check if device is online (active in last 10 minutes)
 function isDeviceOnline(device: Device): boolean {
   const lastActive = new Date(device.last_active_at).getTime()
-  const tenMinutesAgo = Date.now() - 10 * 60 * 1000
-  return lastActive > tenMinutesAgo
+  return lastActive > Date.now() - TEN_MINUTES_MS
+}
+
+// Filter out devices inactive for 7+ days
+function isDeviceRecent(device: Device): boolean {
+  const lastActive = new Date(device.last_active_at).getTime()
+  return lastActive > Date.now() - SEVEN_DAYS_MS
 }
 
 interface SendAlertModalProps {
@@ -33,10 +42,35 @@ export default function SendAlertModal({ onClose }: SendAlertModalProps) {
 
   useEffect(() => {
     fetchAllDevices().then(setDevices)
+
+    // Subscribe to device updates for real-time online status
+    const supabase = createClient()
+    const channel = supabase
+      .channel('devices-realtime-modal')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'devices' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setDevices((prev) => [...prev, payload.new as Device])
+          } else if (payload.eventType === 'UPDATE') {
+            setDevices((prev) =>
+              prev.map((d) => (d.id === payload.new.id ? (payload.new as Device) : d))
+            )
+          } else if (payload.eventType === 'DELETE') {
+            setDevices((prev) => prev.filter((d) => d.id !== payload.old.id))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
-  // Filter out current device from target list
-  const otherDevices = devices.filter((d) => d.id !== deviceId)
+  // Filter out current device and stale devices (inactive 7+ days)
+  const otherDevices = devices.filter((d) => d.id !== deviceId && isDeviceRecent(d))
 
   const handleSendPreset = async (message: string) => {
     setIsSending(true)

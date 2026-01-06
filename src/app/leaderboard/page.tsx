@@ -69,12 +69,6 @@ const TYPE_COLORS: Record<ActivityType, { main: string; gradient: string[] }> = 
   Downtime: { main: '#F59E0B', gradient: ['#FBBF24', '#D97706', '#B45309'] },
 }
 
-const TYPE_EMOJIS: Record<ActivityType, string> = {
-  Home: '🏠',
-  Brain: '🧠',
-  Body: '💪',
-  Downtime: '🎮',
-}
 
 function getUserChartColors(userId: string) {
   const colors = getUserColorById(userId)
@@ -146,34 +140,69 @@ export default function LeaderboardPage() {
     .sort((a, b) => b.ratio - a.ratio)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-black bg-gradient-to-r from-blue-400 via-emerald-400 to-amber-400 bg-clip-text text-transparent mb-2">
-            SayDo Trends
-          </h1>
-          <p className="text-gray-400">Track progress over time</p>
-          <Link href="/" className="text-gray-500 hover:text-white text-sm mt-2 inline-block">
-            ← Back to Home
-          </Link>
-        </div>
-
-        <div className="flex justify-center mb-8">
-          <div className="inline-flex rounded-full bg-gray-800/50 p-1 border border-gray-700">
-            <button
-              onClick={() => setGranularity('day')}
-              className={'px-8 py-3 rounded-full text-sm font-bold transition-all ' + (granularity === 'day' ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' : 'text-gray-400 hover:text-white')}
-            >
-              Daily
-            </button>
-            <button
-              onClick={() => setGranularity('week')}
-              className={'px-8 py-3 rounded-full text-sm font-bold transition-all ' + (granularity === 'week' ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' : 'text-gray-400 hover:text-white')}
-            >
-              Weekly
-            </button>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      {/* Sticky header matching person page style */}
+      <div className="sticky top-0 z-30">
+        <div className="text-white px-6 py-3 pb-8 relative overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-700">
+          <div className="max-w-6xl mx-auto relative z-10">
+            {/* Top row: Back link, nav pills, settings */}
+            <div className="flex items-center justify-between mb-1">
+              <Link href="/" className="text-white/70 hover:text-white text-sm transition-colors">
+                &larr; Switch person
+              </Link>
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center rounded-full bg-black/20 px-3 py-1 backdrop-blur-sm">
+                  <Link
+                    href="/"
+                    className="text-sm transition-colors px-3 text-white/70 hover:text-white"
+                  >
+                    Daily
+                  </Link>
+                  <span className="text-white/30">|</span>
+                  <Link
+                    href="/"
+                    className="text-sm transition-colors px-3 text-white/70 hover:text-white"
+                  >
+                    Long Term
+                  </Link>
+                  <span className="text-white/30">|</span>
+                  <span className="text-sm px-3 text-white font-semibold">
+                    Leaderboard
+                  </span>
+                </div>
+                <Link href="/admin" className="text-white/70 hover:text-white transition-colors p-2 rounded-full hover:bg-black/20" title="Settings">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"
+                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+            {/* Title row */}
+            <div className="flex items-center justify-center">
+              <h1 className="text-5xl font-black text-white drop-shadow-lg">
+                SayDo Trends
+              </h1>
+            </div>
           </div>
         </div>
+        {/* Curved bottom edge */}
+        <div className="relative bg-indigo-700">
+          <svg className="absolute -bottom-6 left-0 right-0 w-full h-6" viewBox="0 0 1440 24" preserveAspectRatio="none">
+            <path
+              d="M0,0 L1440,0 L1440,0 C960,24 480,24 0,0 Z"
+              fill="rgb(67, 56, 202)"
+            />
+          </svg>
+        </div>
+      </div>
+
+      <div className="flex-1 pt-8 px-4">
+        <div className="max-w-6xl mx-auto">
 
         {loading ? (
           <div className="text-center text-gray-400 py-12">
@@ -187,6 +216,24 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <>
+            {/* Granularity toggle */}
+            <div className="flex justify-center mb-8">
+              <div className="inline-flex rounded-full bg-gray-800/50 p-1 border border-gray-700">
+                <button
+                  onClick={() => setGranularity('day')}
+                  className={'px-6 py-2 rounded-full text-sm font-medium transition-all ' + (granularity === 'day' ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white' : 'text-gray-400 hover:text-white')}
+                >
+                  Daily
+                </button>
+                <button
+                  onClick={() => setGranularity('week')}
+                  className={'px-6 py-2 rounded-full text-sm font-medium transition-all ' + (granularity === 'week' ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white' : 'text-gray-400 hover:text-white')}
+                >
+                  Weekly
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               {currentStats.map((stat, index) => {
                 const chartColors = getUserChartColors(stat.user_id)
@@ -340,7 +387,7 @@ export default function LeaderboardPage() {
                         <Bar
                           key={type}
                           dataKey={(d: HoursBreakdown) => d.byType.find((t) => t.type === type)?.hours || 0}
-                          name={TYPE_EMOJIS[type] + ' ' + type}
+                          name={type}
                           fill={TYPE_COLORS[type].main}
                           radius={[4, 4, 0, 0]}
                         />
@@ -384,7 +431,7 @@ export default function LeaderboardPage() {
                     {(['Home', 'Brain', 'Body', 'Downtime'] as ActivityType[]).map((type) => (
                       <div key={type} className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{ background: TYPE_COLORS[type].main }} />
-                        <span className="text-gray-300 text-sm">{TYPE_EMOJIS[type]} {type}</span>
+                        <span className="text-gray-300 text-sm">{type}</span>
                       </div>
                     ))}
                   </div>
@@ -393,6 +440,7 @@ export default function LeaderboardPage() {
             )}
           </>
         )}
+        </div>
       </div>
     </div>
   )

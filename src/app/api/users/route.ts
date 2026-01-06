@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     .from('users')
     .insert({
       id: user.id,
-      email: user.email!,
+      email: user.email!.toLowerCase(),
       display_name: display_name.trim(),
       cycle_weeks,
       cycle_start_date: new Date().toISOString().split('T')[0],
