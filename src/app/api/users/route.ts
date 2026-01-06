@@ -131,6 +131,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Seed default personal activities for new users
+  const defaultActivities = [
+    // Home tasks - common rooms
+    { name: 'Kitchen', type: 'Home', default_minutes: 15, user_id: user.id, is_rota: false },
+    { name: 'Living Room', type: 'Home', default_minutes: 15, user_id: user.id, is_rota: false },
+    { name: 'Bathroom', type: 'Home', default_minutes: 10, user_id: user.id, is_rota: false },
+    { name: 'Bedroom', type: 'Home', default_minutes: 10, user_id: user.id, is_rota: false },
+    // Body
+    { name: 'Exercise', type: 'Body', default_minutes: 30, user_id: user.id, is_rota: false },
+    // Brain
+    { name: 'Read', type: 'Brain', default_minutes: 20, user_id: user.id, is_rota: false },
+    // Downtime
+    { name: 'Family Time', type: 'Downtime', default_minutes: 30, user_id: user.id, is_rota: false },
+  ]
+
+  await supabase.from('activities').insert(defaultActivities)
+
   return NextResponse.json({ profile })
 }
 
