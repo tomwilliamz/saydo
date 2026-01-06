@@ -265,9 +265,3 @@ export const PERSON_COLORS: Record<Person, { bg: string; text: string; border: s
 /** @deprecated Will be removed */
 export const ALL_PERSONS: Person[] = ['Thomas', 'Ivor', 'Axel']
 
-/** @deprecated Will be removed */
-export const PERSON_AVATARS: Record<Person, string> = {
-  Thomas: '/avatar/tom.jpg',
-  Ivor: '/avatar/ivor.jpg',
-  Axel: '/avatar/axel.jpg',
-}
