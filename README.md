@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SayDo
+
+**Say what you'll do. Do what you say.**
+
+SayDo is a family activity tracker that helps households manage daily tasks, chores, and personal goals. Track what you commit to doing each day and measure your follow-through with a simple "Say/Do ratio."
+
+## Features
+
+### Daily Task Tracking
+- Schedule recurring activities across four categories: **Home**, **Brain**, **Body**, and **Downtime**
+- Track completion status with start/stop timers
+- Defer tasks to another day when life gets in the way
+- Add ad-hoc activities on the fly
+
+### Family Collaboration
+- Create families and invite members with a simple code
+- **Personal activities**: Individual tasks that only you see
+- **Family chores (Rota)**: Rotating responsibilities that cycle through family members on a configurable schedule (1-8 weeks)
+
+### Leaderboard & Stats
+- Daily and weekly Say/Do ratio tracking
+- Visual charts showing completion trends over time
+- Tied rankings get the same medal (fairness matters!)
+- Time investment breakdowns by category
+
+### Multi-Device Support
+- Register multiple devices per user
+- Send alerts between family devices
+- Real-time online status indicators
+
+## Tech Stack
+
+- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Database**: Supabase (PostgreSQL with Row Level Security)
+- **Auth**: Supabase Auth (Google OAuth)
+- **Charts**: Recharts
+- **Hosting**: Vercel
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+
+- A Supabase project
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Setup
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/tomwilliamz/saydo.git
+   cd saydo
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env.local
+   ```
 
-## Learn More
+   Add your Supabase credentials:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. Run database migrations:
+   ```bash
+   npx supabase db push
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+6. Open [http://localhost:3000](http://localhost:3000)
 
-## Deploy on Vercel
+## Screenshots
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+*Coming soon*
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Philosophy
+
+The name "SayDo" reflects the core principle: **accountability through transparency**.
+
+- **Say**: Commit to what you'll accomplish today
+- **Do**: Complete your commitments
+- **Ratio**: Your Say/Do percentage shows how well you follow through
+
+It's not about perfection—it's about building awareness and gradually improving your reliability to yourself and your family.
+
+## License
+
+MIT
+
+---
+
+Built with caffeine and Claude Code
