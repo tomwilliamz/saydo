@@ -23,10 +23,17 @@ SayDo is a family activity tracker that helps households manage daily tasks, cho
 - Tied rankings get the same medal (fairness matters!)
 - Time investment breakdowns by category
 
+### Cross-Network Alerts
+- Send instant alerts to any family member's device, anywhere in the world
+- "Dinner's ready!" from the kitchen tablet to everyone's phones
+- Visual alert overlay that demands attention until dismissed
+- Works across WiFi, cellular, and different networks
+- See which family devices are online in real-time
+
 ### Multi-Device Support
-- Register multiple devices per user
-- Send alerts between family devices
-- Real-time online status indicators
+- Register multiple devices per user (tablets, phones, etc.)
+- Each device gets a friendly name for easy targeting
+- Automatic heartbeat tracking shows online/offline status
 
 ## Tech Stack
 
