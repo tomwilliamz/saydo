@@ -77,23 +77,24 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: scheduleError.message }, { status: 500 })
   }
 
-  // Get family memberships with family rota_cycle_weeks
+  // Get family memberships with family rota settings
   const { data: familyMemberships } = await supabase
     .from('family_members')
-    .select('family_id, families(rota_cycle_weeks)')
+    .select('family_id, families(rota_cycle_weeks, rota_start_date)')
     .eq('user_id', targetUserId)
 
   let familyActivitySchedule: Array<{ activity: Activity }> = []
 
-  // For each family, calculate the correct week based on that family's rota_cycle_weeks
+  // For each family, calculate the correct week based on that family's rota settings
   for (const membership of familyMemberships || []) {
     const familyId = membership.family_id
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const familyData = membership.families as any
     const rotaCycleWeeks = familyData?.rota_cycle_weeks || 4
+    const rotaStartDate = familyData?.rota_start_date ? parseDate(familyData.rota_start_date) : parseDate('2025-01-06')
 
-    // Calculate week of cycle for this family's rota
-    const familyWeekOfCycle = getWeekOfCycle(targetDate, cycleStartDate, rotaCycleWeeks)
+    // Calculate week of cycle for this family's rota using family's start date
+    const familyWeekOfCycle = getWeekOfCycle(targetDate, rotaStartDate, rotaCycleWeeks)
 
     console.log('Family query:', { familyId, rotaCycleWeeks, familyWeekOfCycle, dayOfWeek, targetDate: dateParam })
 
@@ -241,9 +242,10 @@ export async function GET(request: Request) {
   })
 
   // Get primary family's week for display (use first family or default to 1)
-  const primaryFamilyData = (familyMemberships?.[0]?.families as { rota_cycle_weeks?: number }) || {}
+  const primaryFamilyData = (familyMemberships?.[0]?.families as { rota_cycle_weeks?: number; rota_start_date?: string }) || {}
   const primaryRotaCycleWeeks = primaryFamilyData.rota_cycle_weeks || 4
-  const displayWeekOfCycle = getWeekOfCycle(targetDate, cycleStartDate, primaryRotaCycleWeeks)
+  const primaryRotaStartDate = primaryFamilyData.rota_start_date ? parseDate(primaryFamilyData.rota_start_date) : parseDate('2025-01-06')
+  const displayWeekOfCycle = getWeekOfCycle(targetDate, primaryRotaStartDate, primaryRotaCycleWeeks)
 
   return NextResponse.json({
     date: dateParam,

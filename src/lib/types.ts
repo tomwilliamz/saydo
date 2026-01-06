@@ -30,6 +30,7 @@ export interface Family {
   name: string
   invite_code: string
   rota_cycle_weeks: number
+  rota_start_date: string // YYYY-MM-DD - Monday when Week 1 of rota began
   week_nicknames: Record<string, string> // e.g. {"1": "Rabbit", "2": "Fox"}
   created_at: string
 }

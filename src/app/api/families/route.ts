@@ -30,6 +30,7 @@ export async function GET(request: Request) {
         name,
         invite_code,
         rota_cycle_weeks,
+        rota_start_date,
         week_nicknames,
         created_at
       )
@@ -74,6 +75,7 @@ export async function GET(request: Request) {
         name: family.name as string,
         invite_code: family.invite_code as string,
         rota_cycle_weeks: (family.rota_cycle_weeks as number) || 4,
+        rota_start_date: (family.rota_start_date as string) || '2025-01-06',
         week_nicknames: (family.week_nicknames as Record<string, string>) || {},
         created_at: family.created_at as string,
         members:

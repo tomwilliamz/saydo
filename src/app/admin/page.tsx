@@ -148,6 +148,27 @@ export default function AdminPage() {
     }
   }
 
+  const handleUpdateFamilyRotaStartDate = async (familyId: string, rotaStartDate: string) => {
+    try {
+      const res = await fetch(`/api/families/${familyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rota_start_date: rotaStartDate }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to update rota start date')
+        return
+      }
+      setFamilies((prev) =>
+        prev.map((f) => (f.id === familyId ? { ...f, rota_start_date: rotaStartDate } : f))
+      )
+      setSuccess('Rota start date updated!')
+    } catch {
+      setError('Failed to update rota start date')
+    }
+  }
+
   const handleUpdateWeekNicknames = async (familyId: string, nicknames: Record<string, string>) => {
     try {
       const res = await fetch(`/api/families/${familyId}`, {
@@ -440,6 +461,15 @@ export default function AdminPage() {
                             </option>
                           ))}
                         </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Week 1 start:</span>
+                        <input
+                          type="date"
+                          value={family.rota_start_date || '2025-01-06'}
+                          onChange={(e) => handleUpdateFamilyRotaStartDate(family.id, e.target.value)}
+                          className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-500"
+                        />
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">Code:</span>

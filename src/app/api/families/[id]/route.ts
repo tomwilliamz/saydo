@@ -28,7 +28,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const body = await request.json()
-  const { rota_cycle_weeks, name, week_nicknames } = body
+  const { rota_cycle_weeks, rota_start_date, name, week_nicknames } = body
 
   // Build update object
   const updates: Record<string, unknown> = {}
@@ -39,6 +39,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Rota cycle weeks must be between 1 and 8' }, { status: 400 })
     }
     updates.rota_cycle_weeks = weeks
+  }
+
+  if (rota_start_date !== undefined) {
+    // Validate date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rota_start_date)) {
+      return NextResponse.json({ error: 'Rota start date must be in YYYY-MM-DD format' }, { status: 400 })
+    }
+    updates.rota_start_date = rota_start_date
   }
 
   if (name !== undefined) {
