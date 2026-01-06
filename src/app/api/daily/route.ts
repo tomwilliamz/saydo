@@ -55,10 +55,12 @@ export async function GET(request: Request) {
 
   const targetDate = parseDate(dateParam)
   const cycleStartDate = parseDate(targetUser.cycle_start_date)
-  const weekOfCycle = getWeekOfCycle(targetDate, cycleStartDate, targetUser.cycle_weeks)
   const dayOfWeek = getDayOfWeek(targetDate)
 
-  // Get schedule for this user, day, and week
+  // Personal schedules are always week 1
+  const personalWeekOfCycle = 1
+
+  // Get personal schedule for this user (always week 1)
   const { data: scheduleData, error: scheduleError } = await supabase
     .from('schedule')
     .select(
@@ -68,25 +70,47 @@ export async function GET(request: Request) {
     `
     )
     .eq('user_id', targetUserId)
-    .eq('week_of_cycle', weekOfCycle)
+    .eq('week_of_cycle', personalWeekOfCycle)
     .eq('day_of_week', dayOfWeek)
 
   if (scheduleError) {
     return NextResponse.json({ error: scheduleError.message }, { status: 500 })
   }
 
-  // Also get family activities that cascade to everyone (user_id = NULL in schedule)
+  // Get family memberships with family rota_cycle_weeks
   const { data: familyMemberships } = await supabase
     .from('family_members')
-    .select('family_id')
+    .select('family_id, families(rota_cycle_weeks)')
     .eq('user_id', targetUserId)
 
-  const familyIds = familyMemberships?.map((m) => m.family_id) || []
-
   let familyActivitySchedule: Array<{ activity: Activity }> = []
-  if (familyIds.length > 0) {
+
+  // For each family, calculate the correct week based on that family's rota_cycle_weeks
+  for (const membership of familyMemberships || []) {
+    const familyId = membership.family_id
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const familyData = membership.families as any
+    const rotaCycleWeeks = familyData?.rota_cycle_weeks || 4
+
+    // Calculate week of cycle for this family's rota
+    const familyWeekOfCycle = getWeekOfCycle(targetDate, cycleStartDate, rotaCycleWeeks)
+
+    console.log('Family query:', { familyId, rotaCycleWeeks, familyWeekOfCycle, dayOfWeek, targetDate: dateParam })
+
+    // Debug: Get ALL family schedules to see what exists
+    const { data: allFamilySchedule } = await supabase
+      .from('schedule')
+      .select('*, activity:activities!inner(name, family_id)')
+      .is('user_id', null)
+      .eq('activity.family_id', familyId)
+    console.log('All family schedules:', allFamilySchedule?.map(s => ({
+      activity: (s.activity as {name: string}).name,
+      day: s.day_of_week,
+      week: s.week_of_cycle
+    })))
+
     // Get family activities with user_id = NULL (cascade to all family members)
-    const { data: familySchedule } = await supabase
+    const { data: familySchedule, error: familyError } = await supabase
       .from('schedule')
       .select(
         `
@@ -95,11 +119,15 @@ export async function GET(request: Request) {
       `
       )
       .is('user_id', null)
-      .eq('week_of_cycle', weekOfCycle)
+      .eq('week_of_cycle', familyWeekOfCycle)
       .eq('day_of_week', dayOfWeek)
-      .in('activity.family_id', familyIds)
+      .eq('activity.family_id', familyId)
 
-    familyActivitySchedule = (familySchedule || []) as Array<{ activity: Activity }>
+    console.log('Family schedule result:', { count: familySchedule?.length, error: familyError, data: familySchedule })
+
+    if (familySchedule) {
+      familyActivitySchedule.push(...(familySchedule as Array<{ activity: Activity }>))
+    }
   }
 
   // Combine personal schedules and cascading family activities
@@ -143,9 +171,14 @@ export async function GET(request: Request) {
     return a.activity.name.localeCompare(b.activity.name)
   })
 
+  // Get primary family's week for display (use first family or default to 1)
+  const primaryFamilyData = (familyMemberships?.[0]?.families as { rota_cycle_weeks?: number }) || {}
+  const primaryRotaCycleWeeks = primaryFamilyData.rota_cycle_weeks || 4
+  const displayWeekOfCycle = getWeekOfCycle(targetDate, cycleStartDate, primaryRotaCycleWeeks)
+
   return NextResponse.json({
     date: dateParam,
-    weekOfCycle,
+    weekOfCycle: displayWeekOfCycle,
     dayOfWeek,
     tasks,
     user: targetUser,

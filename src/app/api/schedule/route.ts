@@ -46,6 +46,18 @@ export async function GET(request: NextRequest) {
       return memberIds.includes(activity.user_id) || activity.family_id === familyId
     })
 
+    // Debug: Log all family activity schedules (user_id = null)
+    const familySchedules = filteredData.filter(s => s.user_id === null)
+    console.log('Family activity schedules count:', familySchedules.length, 'out of', filteredData.length, 'total')
+    if (familySchedules.length > 0) {
+      console.log('Family activity schedules (Everyone):', familySchedules.map(s => ({
+        activity: (s.activity as {name: string}).name,
+        day: s.day_of_week,
+        week: s.week_of_cycle,
+        user_id: s.user_id
+      })))
+    }
+
     return NextResponse.json(filteredData)
   }
 

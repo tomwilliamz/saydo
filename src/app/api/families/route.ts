@@ -25,6 +25,8 @@ export async function GET() {
         id,
         name,
         invite_code,
+        rota_cycle_weeks,
+        week_nicknames,
         created_at
       )
     `
@@ -67,6 +69,8 @@ export async function GET() {
         id: family.id as string,
         name: family.name as string,
         invite_code: family.invite_code as string,
+        rota_cycle_weeks: (family.rota_cycle_weeks as number) || 4,
+        week_nicknames: (family.week_nicknames as Record<string, string>) || {},
         created_at: family.created_at as string,
         members:
           members?.map((member) => ({

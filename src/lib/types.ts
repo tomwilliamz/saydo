@@ -29,6 +29,8 @@ export interface Family {
   id: string
   name: string
   invite_code: string
+  rota_cycle_weeks: number
+  week_nicknames: Record<string, string> // e.g. {"1": "Rabbit", "2": "Fox"}
   created_at: string
 }
 

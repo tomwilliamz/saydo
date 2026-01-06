@@ -127,17 +127,44 @@ export default function AdminPage() {
     }
   }
 
-  const handleUpdateCycle = async (cycleWeeks: number) => {
+  const handleUpdateFamilyRotaCycle = async (familyId: string, rotaCycleWeeks: number) => {
     try {
-      await fetch('/api/users', {
+      const res = await fetch(`/api/families/${familyId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cycle_weeks: cycleWeeks }),
+        body: JSON.stringify({ rota_cycle_weeks: rotaCycleWeeks }),
       })
-      setCurrentUser((prev) => (prev ? { ...prev, cycle_weeks: cycleWeeks } : null))
-      setSuccess('Cycle updated!')
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to update rota cycle')
+        return
+      }
+      setFamilies((prev) =>
+        prev.map((f) => (f.id === familyId ? { ...f, rota_cycle_weeks: rotaCycleWeeks } : f))
+      )
+      setSuccess('Rota cycle updated!')
     } catch {
-      setError('Failed to update cycle')
+      setError('Failed to update rota cycle')
+    }
+  }
+
+  const handleUpdateWeekNicknames = async (familyId: string, nicknames: Record<string, string>) => {
+    try {
+      const res = await fetch(`/api/families/${familyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ week_nicknames: nicknames }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to update week nicknames')
+        return
+      }
+      setFamilies((prev) =>
+        prev.map((f) => (f.id === familyId ? { ...f, week_nicknames: nicknames } : f))
+      )
+    } catch {
+      setError('Failed to update week nicknames')
     }
   }
 
@@ -359,19 +386,6 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <label className="text-gray-400">Schedule Cycle:</label>
-                <select
-                  value={currentUser.cycle_weeks}
-                  onChange={(e) => handleUpdateCycle(Number(e.target.value))}
-                  className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value={1}>1 week</option>
-                  <option value={2}>2 weeks</option>
-                  <option value={3}>3 weeks</option>
-                  <option value={4}>4 weeks</option>
-                </select>
-              </div>
             </div>
           )}
         </section>
@@ -412,16 +426,32 @@ export default function AdminPage() {
                 <div key={family.id} className="bg-gray-800/50 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-white font-medium">{family.name}</h3>
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-gray-400">Invite code:</span>
-                      <code className="bg-gray-700 px-2 py-1 rounded text-blue-400 font-mono">{family.invite_code}</code>
-                      <button
-                        onClick={() => navigator.clipboard.writeText(family.invite_code)}
-                        className="text-gray-400 hover:text-white transition-colors"
-                        title="Copy code"
-                      >
-                        📋
-                      </button>
+                    <div className="flex items-center gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Rota cycle:</span>
+                        <select
+                          value={family.rota_cycle_weeks}
+                          onChange={(e) => handleUpdateFamilyRotaCycle(family.id, Number(e.target.value))}
+                          className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-500"
+                        >
+                          {[1, 2, 3, 4, 5, 6, 7, 8].map((w) => (
+                            <option key={w} value={w}>
+                              {w} week{w > 1 ? 's' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Code:</span>
+                        <code className="bg-gray-700 px-2 py-1 rounded text-blue-400 font-mono">{family.invite_code}</code>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(family.invite_code)}
+                          className="text-gray-400 hover:text-white transition-colors"
+                          title="Copy code"
+                        >
+                          📋
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-3">
@@ -551,6 +581,9 @@ export default function AdminPage() {
                     currentUser={currentUser!}
                     familyId={family.id}
                     members={family.members}
+                    rotaCycleWeeks={family.rota_cycle_weeks}
+                    weekNicknames={family.week_nicknames || {}}
+                    onUpdateWeekNicknames={(nicknames) => handleUpdateWeekNicknames(family.id, nicknames)}
                   />
                 )
               })}
@@ -561,6 +594,9 @@ export default function AdminPage() {
                   currentUser={currentUser!}
                   familyId={families[0].id}
                   members={families[0].members}
+                  rotaCycleWeeks={families[0].rota_cycle_weeks}
+                  weekNicknames={families[0].week_nicknames || {}}
+                  onUpdateWeekNicknames={(nicknames) => handleUpdateWeekNicknames(families[0].id, nicknames)}
                 />
               )}
             </>
