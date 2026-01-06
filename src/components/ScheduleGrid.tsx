@@ -1474,34 +1474,6 @@ export default function ScheduleGrid({ currentUser, familyId, members, rotaCycle
                     <span className="text-gray-400 text-sm">min</span>
                   </div>
                 </div>
-                <div className="flex-1">
-                  <label className="block text-gray-400 text-sm mb-2">Repeats</label>
-                  <div className="flex gap-1">
-                    {DAYS.map((day, idx) => {
-                      const currentDays = getRepeatDays(newActivityRepeat)
-                      const isSelected = currentDays.includes(idx)
-                      return (
-                        <button
-                          key={day}
-                          type="button"
-                          onClick={() => {
-                            const newDays = isSelected
-                              ? currentDays.filter((d) => d !== idx)
-                              : [...currentDays, idx]
-                            setNewActivityRepeat(newDays.length > 0 ? newDays.sort((a, b) => a - b).join(',') : null)
-                          }}
-                          className={`w-8 h-8 rounded text-xs font-medium transition-colors ${
-                            isSelected
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                          }`}
-                        >
-                          {day[0]}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -1617,34 +1589,6 @@ export default function ScheduleGrid({ currentUser, familyId, members, rotaCycle
                       className="w-20 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-center focus:outline-none focus:border-blue-500"
                     />
                     <span className="text-gray-400 text-sm">min</span>
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <label className="block text-gray-400 text-sm mb-2">Repeats</label>
-                  <div className="flex gap-1">
-                    {DAYS.map((day, idx) => {
-                      const currentDays = getRepeatDays(editActivityRepeat)
-                      const isSelected = currentDays.includes(idx)
-                      return (
-                        <button
-                          key={day}
-                          type="button"
-                          onClick={() => {
-                            const newDays = isSelected
-                              ? currentDays.filter((d) => d !== idx)
-                              : [...currentDays, idx]
-                            setEditActivityRepeat(newDays.length > 0 ? newDays.sort((a, b) => a - b).join(',') : null)
-                          }}
-                          className={`w-8 h-8 rounded text-xs font-medium transition-colors ${
-                            isSelected
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                          }`}
-                        >
-                          {day[0]}
-                        </button>
-                      )
-                    })}
                   </div>
                 </div>
               </div>
