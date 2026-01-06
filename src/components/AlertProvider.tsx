@@ -38,12 +38,36 @@ export default function AlertProvider({ children }: AlertProviderProps) {
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false)
   const [activeAlert, setActiveAlert] = useState<Alert | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   // FCM hook for push notifications
   const { permissionStatus, requestPermission } = useFcm(deviceId)
 
-  // Initialize device from localStorage
+  // Check authentication status first
   useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setIsAuthenticated(!!user)
+    }
+    checkAuth()
+
+    // Listen for auth changes
+    const supabase = createClient()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session?.user)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Initialize device from localStorage (only after authenticated)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setIsInitialized(true)
+      return
+    }
+
     const storedId = getStoredDeviceId()
     const storedName = getStoredDeviceName()
 
@@ -67,7 +91,7 @@ export default function AlertProvider({ children }: AlertProviderProps) {
       setShowDeviceSetup(true)
     }
     setIsInitialized(true)
-  }, [])
+  }, [isAuthenticated])
 
   // Heartbeat to update last_active_at
   useEffect(() => {
@@ -214,8 +238,8 @@ export default function AlertProvider({ children }: AlertProviderProps) {
     >
       {children}
 
-      {/* Device setup modal */}
-      {showDeviceSetup && (
+      {/* Device setup modal - only show when authenticated */}
+      {showDeviceSetup && isAuthenticated && (
         <DeviceSetup onComplete={handleDeviceSetupComplete} />
       )}
 
