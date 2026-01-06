@@ -13,6 +13,8 @@ interface TaskRowProps {
   onResume: () => void
   onDone: () => void
   onSkip: () => void
+  onDefer?: () => void
+  onDelete?: () => void
   onUndo: () => void
   onReset: () => void
   onEditDuration?: () => void
@@ -29,6 +31,8 @@ export default function TaskRow({
   onResume,
   onDone,
   onSkip,
+  onDefer,
+  onDelete,
   onUndo,
   onReset,
   onEditDuration,
@@ -106,6 +110,20 @@ export default function TaskRow({
           hover:bg-gray-600/50 transition-all`
       : `px-6 py-3 bg-gray-200 text-gray-600 rounded-2xl text-lg font-semibold
           hover:bg-gray-300 transition-colors`
+
+    const deferButtonClass = darkMode
+      ? `px-6 py-3 rounded-2xl text-lg font-semibold
+          bg-amber-500/20 text-amber-300 border border-amber-500/50
+          hover:bg-amber-500/30 transition-all`
+      : `px-6 py-3 bg-amber-100 text-amber-700 rounded-2xl text-lg font-semibold
+          hover:bg-amber-200 transition-colors`
+
+    const deleteButtonClass = darkMode
+      ? `px-6 py-3 rounded-2xl text-lg font-semibold
+          bg-red-500/20 text-red-300 border border-red-500/50
+          hover:bg-red-500/30 transition-all`
+      : `px-6 py-3 bg-red-100 text-red-700 rounded-2xl text-lg font-semibold
+          hover:bg-red-200 transition-colors`
 
     const resetLinkClass = darkMode
       ? 'text-sm text-gray-400 hover:text-gray-200 underline transition-colors'
@@ -201,6 +219,22 @@ export default function TaskRow({
         >
           Skip
         </button>
+        {onDefer && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDefer(); }}
+            className={deferButtonClass}
+          >
+            Defer
+          </button>
+        )}
+        {onDelete && task.isAdHoc && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className={deleteButtonClass}
+          >
+            Remove
+          </button>
+        )}
       </div>
     )
   }
@@ -212,6 +246,9 @@ export default function TaskRow({
 
     if (status === 'done') {
       const hasDuration = completion?.elapsed_ms && completion.elapsed_ms > 0
+      const deleteLinkClass = darkMode
+        ? 'text-sm text-red-400 hover:text-red-300 underline transition-colors'
+        : 'text-sm text-red-500 hover:text-red-700 underline'
       return (
         <div className="flex items-center gap-3">
           <span className={darkMode ? 'text-emerald-400 font-medium' : 'text-green-700 font-medium'}>
@@ -231,6 +268,14 @@ export default function TaskRow({
           >
             Undo
           </button>
+          {onDelete && task.isAdHoc && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className={deleteLinkClass}
+            >
+              Remove
+            </button>
+          )}
         </div>
       )
     }
@@ -302,6 +347,16 @@ export default function TaskRow({
           <span className={`font-semibold ${textColor} ${isExpanded ? 'text-2xl' : 'text-lg'}`}>
             {activity.name}
           </span>
+          {task.isDeferred && (
+            <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${darkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>
+              deferred
+            </span>
+          )}
+          {task.isAdHoc && (
+            <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${darkMode ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+              extra
+            </span>
+          )}
         </div>
       </div>
 

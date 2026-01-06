@@ -8,6 +8,7 @@ import confetti from 'canvas-confetti'
 import TaskRow from '@/components/TaskRow'
 import DurationModal from '@/components/DurationModal'
 import LongTermTaskList from '@/components/LongTermTaskList'
+import AdHocActivityModal from '@/components/AdHocActivityModal'
 import { DailyTask, User, getUserColorById } from '@/lib/types'
 import { formatDateForDB, getTomorrow, getYesterday, isPast, isToday, parseDate } from '@/lib/utils'
 
@@ -44,6 +45,7 @@ export default function PersonPage() {
   }>({ isOpen: false, task: null, elapsedMinutes: 0 })
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [activeView, setActiveView] = useState<'daily' | 'long-term'>('daily')
+  const [showAdHocModal, setShowAdHocModal] = useState(false)
 
   const fetchTasks = useCallback(
     async (date: Date) => {
@@ -69,8 +71,8 @@ export default function PersonPage() {
     fetchTasks(currentDate)
   }, [currentDate, fetchTasks])
 
-  // Get user color based on their ID
-  const colors = user?.id ? getUserColorById(user.id) : getUserColorById('default')
+  // Get user color based on their ID (use userId from URL to avoid flash)
+  const colors = getUserColorById(userId)
 
   const handleDateChange = (newDate: Date) => {
     setCurrentDate(newDate)
@@ -331,6 +333,73 @@ export default function PersonPage() {
     }
   }
 
+  const handleDefer = async (task: DailyTask) => {
+    // Calculate tomorrow's date
+    const tomorrow = getTomorrow(currentDate)
+    const tomorrowStr = formatDateForDB(tomorrow)
+
+    // Optimistically remove from today's list
+    setTasks((prev) => prev.filter((t) => t.activity.id !== task.activity.id))
+    setSelectedTaskId(null)
+
+    try {
+      await fetch('/api/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_id: task.activity.id,
+          user_id: userId,
+          date: formatDateForDB(currentDate),
+          status: 'deferred',
+          deferred_to: tomorrowStr,
+        }),
+      })
+    } catch (error) {
+      console.error('Failed to defer task:', error)
+      fetchTasks(currentDate)
+    }
+  }
+
+  const handleAddAdHoc = async (activity: { id: string; default_minutes: number }) => {
+    try {
+      // Create a completion for today
+      await fetch('/api/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activity_id: activity.id,
+          user_id: userId,
+          date: formatDateForDB(currentDate),
+          status: 'done',
+          completed_at: new Date().toISOString(),
+          elapsed_ms: activity.default_minutes * 60 * 1000,
+        }),
+      })
+
+      // Refresh tasks to show the new one
+      fetchTasks(currentDate)
+    } catch (error) {
+      console.error('Failed to add ad-hoc activity:', error)
+    }
+  }
+
+  const handleDeleteAdHoc = async (task: DailyTask) => {
+    if (!task.completion?.id) return
+
+    // Optimistically remove from list
+    setTasks((prev) => prev.filter((t) => t.activity.id !== task.activity.id))
+    setSelectedTaskId(null)
+
+    try {
+      await fetch(`/api/completions?id=${task.completion.id}`, {
+        method: 'DELETE',
+      })
+    } catch (error) {
+      console.error('Failed to delete ad-hoc task:', error)
+      fetchTasks(currentDate)
+    }
+  }
+
   const handleUndo = async (task: DailyTask) => {
     if (!task.completion?.id) return
 
@@ -458,7 +527,7 @@ export default function PersonPage() {
                   {activeView === 'long-term' ? 'Long Term Say Dos' : format(currentDate, 'EEEE')}
                 </span>
               </div>
-              <div className="flex-1 flex justify-end">
+              <div className="flex-1 flex justify-end items-center gap-3">
                 <div
                   className="text-3xl font-black px-4 py-1 rounded-xl"
                   style={{
@@ -566,6 +635,8 @@ export default function PersonPage() {
                         onResume={() => handleResume(task)}
                         onDone={() => handleDone(task)}
                         onSkip={() => handleSkip(task)}
+                        onDefer={!isPastDate ? () => handleDefer(task) : undefined}
+                        onDelete={task.isAdHoc ? () => handleDeleteAdHoc(task) : undefined}
                         onUndo={() => handleUndo(task)}
                         onReset={() => handleReset(task)}
                         darkMode
@@ -576,9 +647,7 @@ export default function PersonPage() {
 
                 {/* Completed tasks */}
                 {completedTasks.length > 0 && (() => {
-                  const totalEstimatedMs = completedTasks.reduce((sum, t) => sum + (t.activity.default_minutes * 60 * 1000), 0)
                   const totalActualMs = completedTasks.reduce((sum, t) => sum + (t.completion?.elapsed_ms || t.activity.default_minutes * 60 * 1000), 0)
-                  const percentDiff = totalEstimatedMs > 0 ? ((totalEstimatedMs - totalActualMs) / totalEstimatedMs) * 100 : 0
                   const formatTime = (ms: number) => {
                     const mins = Math.round(ms / 60000)
                     if (mins >= 60) {
@@ -600,12 +669,7 @@ export default function PersonPage() {
                     <div className="px-4 py-2 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                       <span className="text-sm text-slate-400">Completed</span>
                       <span className="text-sm text-slate-400">
-                        {formatTime(totalActualMs)} / {formatTime(totalEstimatedMs)}
-                        {percentDiff !== 0 && (
-                          <span className={percentDiff > 0 ? 'text-green-400' : 'text-orange-400'}>
-                            {' '}({percentDiff > 0 ? '' : '+'}{Math.abs(Math.round(percentDiff))}% {percentDiff > 0 ? 'faster' : 'slower'})
-                          </span>
-                        )}
+                        Total time spent: {formatTime(totalActualMs)}
                       </span>
                     </div>
                     {completedTasks.map((task) => (
@@ -620,6 +684,7 @@ export default function PersonPage() {
                         onResume={() => handleResume(task)}
                         onDone={() => handleDone(task)}
                         onSkip={() => handleSkip(task)}
+                        onDelete={task.isAdHoc ? () => handleDeleteAdHoc(task) : undefined}
                         onUndo={() => handleUndo(task)}
                         onReset={() => handleReset(task)}
                         onEditDuration={() => handleEditDuration(task)}
@@ -646,6 +711,24 @@ export default function PersonPage() {
         onConfirm={handleDurationConfirm}
         onCancel={handleDurationCancel}
       />
+
+      {/* Ad-hoc Activity Modal */}
+      <AdHocActivityModal
+        isOpen={showAdHocModal}
+        onClose={() => setShowAdHocModal(false)}
+        onSubmit={handleAddAdHoc}
+        userId={userId}
+      />
+
+      {/* Floating add button for daily view */}
+      {activeView === 'daily' && !isPastDate && (
+        <button
+          onClick={() => setShowAdHocModal(true)}
+          className={`fixed bottom-20 right-6 w-14 h-14 rounded-full text-white text-3xl shadow-lg hover:scale-110 transition-transform z-20 bg-gradient-to-br ${colors.gradient}`}
+        >
+          +
+        </button>
+      )}
 
       {/* Bottom gradient fade */}
       <div

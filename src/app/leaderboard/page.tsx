@@ -32,6 +32,7 @@ interface TrendDataPoint {
 interface UserTrend {
   user_id: string
   display_name: string
+  avatar_url: string | null
   data: TrendDataPoint[]
 }
 
@@ -132,12 +133,19 @@ export default function LeaderboardPage() {
       return {
         user_id: trend.user_id,
         display_name: trend.display_name,
+        avatar_url: trend.avatar_url,
         ratio: latest ? Math.round(latest.ratio * 100) : 0,
         done: latest?.done || 0,
         total: latest?.total || 0,
       }
     })
     .sort((a, b) => b.ratio - a.ratio)
+
+  // Calculate ranks accounting for ties (same ratio = same rank)
+  const getRank = (stat: typeof currentStats[0]) => {
+    // Rank = number of people with HIGHER ratio + 1
+    return currentStats.filter(s => s.ratio > stat.ratio).length + 1
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
@@ -185,7 +193,7 @@ export default function LeaderboardPage() {
             {/* Title row */}
             <div className="flex items-center justify-center">
               <h1 className="text-5xl font-black text-white drop-shadow-lg">
-                SayDo Trends
+                Leaderboard
               </h1>
             </div>
           </div>
@@ -234,33 +242,92 @@ export default function LeaderboardPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              {currentStats.map((stat, index) => {
+            {/* Podium display for top 3 */}
+            <div className="flex justify-center items-end gap-2 md:gap-4 mb-8 px-2">
+              {/* Reorder: 2nd, 1st, 3rd for podium layout */}
+              {[currentStats[1], currentStats[0], currentStats[2]].map((stat, podiumIndex) => {
+                if (!stat) return null
+                const rank = getRank(stat) // 1-based rank accounting for ties
                 const chartColors = getUserChartColors(stat.user_id)
                 const medals = ['🥇', '🥈', '🥉']
+                const medal = rank <= 3 ? medals[rank - 1] : '🏅'
+
+                // All styling based on RANK (for ties), not position
+                const podiumHeightsByRank: Record<number, string> = {
+                  1: 'h-36',
+                  2: 'h-28',
+                  3: 'h-20',
+                }
+                const podiumColorsByRank: Record<number, string> = {
+                  1: 'from-yellow-400 to-amber-500', // Gold
+                  2: 'from-slate-400 to-slate-500', // Silver
+                  3: 'from-amber-600 to-amber-700', // Bronze
+                }
+                const avatarSizesByRank: Record<number, string> = {
+                  1: 'w-28 h-28',
+                  2: 'w-20 h-20',
+                  3: 'w-16 h-16',
+                }
+                const textSizesByRank: Record<number, string> = {
+                  1: 'text-2xl',
+                  2: 'text-lg',
+                  3: 'text-base',
+                }
+                const percentSizesByRank: Record<number, string> = {
+                  1: 'text-5xl',
+                  2: 'text-3xl',
+                  3: 'text-2xl',
+                }
+                const podiumHeight = podiumHeightsByRank[rank] || 'h-16'
+                const podiumColor = podiumColorsByRank[rank] || 'from-gray-500 to-gray-600'
+                const avatarSize = avatarSizesByRank[rank] || 'w-14 h-14'
+                const textSize = textSizesByRank[rank] || 'text-base'
+                const percentSize = percentSizesByRank[rank] || 'text-xl'
+
                 return (
                   <Link
                     key={stat.user_id}
                     href={'/person/' + stat.user_id}
                     onMouseEnter={() => setHoveredUser(stat.user_id)}
                     onMouseLeave={() => setHoveredUser(null)}
-                    className={'relative overflow-hidden rounded-2xl p-6 transition-all ' + (hoveredUser === stat.user_id ? 'scale-105 z-10' : '')}
-                    style={{
-                      background: 'linear-gradient(135deg, ' + chartColors.gradient[0] + '22, ' + chartColors.gradient[2] + '44)',
-                      border: '1px solid ' + chartColors.gradient[0] + '44',
-                    }}
+                    className={'flex flex-col items-center transition-all ' + (hoveredUser === stat.user_id ? 'scale-105 z-10' : '')}
                   >
-                    <div className="relative">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-4xl">{medals[index] || '🏅'}</span>
-                        <div className="text-4xl font-black" style={{ color: chartColors.main }}>
-                          {stat.ratio}%
+                    {/* Avatar and info above podium */}
+                    <div className="flex flex-col items-center mb-2">
+                      <div className="relative mb-2">
+                        <div
+                          className={`${avatarSize} rounded-full overflow-hidden`}
+                          style={{ boxShadow: `0 0 0 4px ${chartColors.main}, 0 8px 32px rgba(0,0,0,0.3)` }}
+                        >
+                          {stat.avatar_url ? (
+                            <img src={stat.avatar_url} alt={stat.display_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div
+                              className="w-full h-full flex items-center justify-center text-3xl font-bold text-white"
+                              style={{ background: `linear-gradient(135deg, ${chartColors.gradient[0]}, ${chartColors.gradient[2]})` }}
+                            >
+                              {stat.display_name[0]?.toUpperCase()}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="text-white text-xl font-bold">{stat.display_name}</div>
-                      <div className="text-gray-400 text-sm mt-1">
+                      <div className={`text-white font-bold ${textSize} text-center`}>{stat.display_name}</div>
+                      <div className={`font-black ${percentSize}`} style={{ color: chartColors.main }}>
+                        {stat.ratio}%
+                      </div>
+                      <div className="text-gray-400 text-xs">
                         {stat.done}/{stat.total} tasks
                       </div>
+                    </div>
+
+                    {/* Podium block - all styling based on rank (for ties) */}
+                    <div
+                      className={`w-24 md:w-32 ${podiumHeight} rounded-t-xl flex items-center justify-center bg-gradient-to-b ${podiumColor}`}
+                      style={{
+                        boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), 0 4px 12px rgba(0,0,0,0.3)',
+                      }}
+                    >
+                      <span className="text-4xl md:text-5xl drop-shadow-lg">{medal}</span>
                     </div>
                   </Link>
                 )

@@ -103,6 +103,7 @@ function ProgressBar({ progress, rank }: { progress: UserProgress; rank: number 
 export default function HomePage() {
   const [familyMembers, setFamilyMembers] = useState<User[]>([])
   const [progressData, setProgressData] = useState<UserProgress[]>([])
+  const [loadingMembers, setLoadingMembers] = useState(true)
   const [initialLoading, setInitialLoading] = useState(true)
   const [period, setPeriod] = useState<TimePeriod>('today')
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null)
@@ -137,6 +138,8 @@ export default function HomePage() {
         setFamilyMembers(Array.from(usersMap.values()))
       } catch (error) {
         console.error('Failed to fetch family members:', error)
+      } finally {
+        setLoadingMembers(false)
       }
     }
 
@@ -289,7 +292,11 @@ export default function HomePage() {
         </div>
 
         {/* User cards */}
-        {familyMembers.length > 0 ? (
+        {loadingMembers ? (
+          <div className="flex items-center justify-center mb-12 h-60">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent" />
+          </div>
+        ) : familyMembers.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {familyMembers.map((user) => {
               const colors = getUserColorById(user.id)

@@ -13,6 +13,7 @@ export interface TrendDataPoint {
 export interface UserTrend {
   user_id: string
   display_name: string
+  avatar_url: string | null
   data: TrendDataPoint[]
 }
 
@@ -33,12 +34,12 @@ export async function GET(request: Request) {
 
   // Get users to calculate trends for
   let userIds: string[] = []
-  let userMap: Map<string, { display_name: string; cycle_weeks: number; cycle_start_date: string }> = new Map()
+  let userMap: Map<string, { display_name: string; avatar_url: string | null; cycle_weeks: number; cycle_start_date: string }> = new Map()
 
   if (familyId) {
     const { data: members } = await supabase
       .from('family_members')
-      .select('user_id, users(id, display_name, cycle_weeks, cycle_start_date)')
+      .select('user_id, users(id, display_name, avatar_url, cycle_weeks, cycle_start_date)')
       .eq('family_id', familyId)
 
     if (members) {
@@ -49,6 +50,7 @@ export async function GET(request: Request) {
           userIds.push(m.user_id)
           userMap.set(m.user_id, {
             display_name: userData.display_name,
+            avatar_url: userData.avatar_url,
             cycle_weeks: userData.cycle_weeks,
             cycle_start_date: userData.cycle_start_date,
           })
@@ -65,7 +67,7 @@ export async function GET(request: Request) {
       const familyIds = myFamilies.map((f) => f.family_id)
       const { data: allMembers } = await supabase
         .from('family_members')
-        .select('user_id, users(id, display_name, cycle_weeks, cycle_start_date)')
+        .select('user_id, users(id, display_name, avatar_url, cycle_weeks, cycle_start_date)')
         .in('family_id', familyIds)
 
       if (allMembers) {
@@ -79,6 +81,7 @@ export async function GET(request: Request) {
               userIds.push(m.user_id)
               userMap.set(m.user_id, {
                 display_name: userData.display_name,
+                avatar_url: userData.avatar_url,
                 cycle_weeks: userData.cycle_weeks,
                 cycle_start_date: userData.cycle_start_date,
               })
@@ -89,7 +92,7 @@ export async function GET(request: Request) {
     } else {
       const { data: currentUser } = await supabase
         .from('users')
-        .select('id, display_name, cycle_weeks, cycle_start_date')
+        .select('id, display_name, avatar_url, cycle_weeks, cycle_start_date')
         .eq('id', user.id)
         .single()
 
@@ -97,6 +100,7 @@ export async function GET(request: Request) {
         userIds.push(currentUser.id)
         userMap.set(currentUser.id, {
           display_name: currentUser.display_name,
+          avatar_url: currentUser.avatar_url,
           cycle_weeks: currentUser.cycle_weeks,
           cycle_start_date: currentUser.cycle_start_date,
         })
@@ -238,6 +242,7 @@ export async function GET(request: Request) {
     trends.push({
       user_id: userId,
       display_name: userData.display_name,
+      avatar_url: userData.avatar_url,
       data,
     })
   }

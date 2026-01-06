@@ -144,9 +144,34 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: completionsError.message }, { status: 500 })
   }
 
+  // Get deferred tasks that were deferred TO this date
+  const { data: deferredCompletions, error: deferredError } = await supabase
+    .from('completions')
+    .select('*, activity:activities(*)')
+    .eq('deferred_to', dateParam)
+    .eq('user_id', targetUserId)
+    .eq('status', 'deferred')
+
+  console.log('Deferred query:', { dateParam, targetUserId, deferredCompletions, deferredError })
+
+  // Get ad-hoc completions (completions for activities not in today's schedule)
+  // These are completions for this date where the activity wasn't scheduled
+  const scheduledActivityIds = new Set(allScheduleData.map((s) => (s.activity as Activity).id))
+  const { data: allCompletionsWithActivities } = await supabase
+    .from('completions')
+    .select('*, activity:activities(*)')
+    .eq('date', dateParam)
+    .eq('user_id', targetUserId)
+    .not('status', 'eq', 'deferred')
+
+  const adHocCompletions = allCompletionsWithActivities?.filter(
+    (c) => c.activity && !scheduledActivityIds.has(c.activity_id)
+  ) || []
+
   // Build daily tasks array
   const tasks: DailyTask[] = []
 
+  // Add scheduled tasks
   for (const scheduleItem of allScheduleData) {
     const activity = scheduleItem.activity as Activity
     const completion =
@@ -159,6 +184,50 @@ export async function GET(request: Request) {
       },
       user: targetUser as User,
       completion,
+    })
+  }
+
+  // Add deferred tasks (these don't have a completion for TODAY yet)
+  for (const deferred of deferredCompletions || []) {
+    const activity = deferred.activity as Activity
+    if (!activity) continue
+
+    // Check if this activity is already in today's scheduled tasks
+    const alreadyScheduled = tasks.some((t) => t.activity.id === activity.id)
+
+    // Check if there's already a completion for this activity today (meaning user already acted on it)
+    const hasCompletionToday = completions?.some((c: Completion) => c.activity_id === activity.id)
+
+    if (!alreadyScheduled && !hasCompletionToday) {
+      tasks.push({
+        activity: {
+          ...activity,
+          owner_type: activity.family_id ? 'family' : 'personal',
+        },
+        user: targetUser as User,
+        completion: null, // Fresh task for today
+        isDeferred: true,
+      })
+    }
+  }
+
+  // Add ad-hoc tasks (already have completions)
+  for (const adHoc of adHocCompletions) {
+    const activity = adHoc.activity as Activity
+    if (!activity) continue
+
+    // Don't add if already in tasks (from schedule or deferred)
+    const alreadyInTasks = tasks.some((t) => t.activity.id === activity.id)
+    if (alreadyInTasks) continue
+
+    tasks.push({
+      activity: {
+        ...activity,
+        owner_type: activity.family_id ? 'family' : 'personal',
+      },
+      user: targetUser as User,
+      completion: adHoc as Completion,
+      isAdHoc: true,
     })
   }
 

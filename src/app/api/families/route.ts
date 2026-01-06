@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 // GET user's families with members
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient()
 
   const {
@@ -14,7 +14,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get all families the user belongs to, with members
+  // Allow fetching families for a specific user (must be in same family as auth user)
+  const { searchParams } = new URL(request.url)
+  const targetUserId = searchParams.get('user_id') || user.id
+
+  // Get all families the target user belongs to, with members
   const { data: memberships, error } = await supabase
     .from('family_members')
     .select(
@@ -31,7 +35,7 @@ export async function GET() {
       )
     `
     )
-    .eq('user_id', user.id)
+    .eq('user_id', targetUserId)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

@@ -102,6 +102,8 @@ export interface DailyTask {
   activity: Activity
   user: User
   completion: Completion | null
+  isDeferred?: boolean
+  isAdHoc?: boolean
 }
 
 // User stats for leaderboard
