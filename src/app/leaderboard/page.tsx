@@ -127,9 +127,15 @@ export default function LeaderboardPage() {
         })
       : []
 
+  // Get today's date in client timezone (YYYY-MM-DD format)
+  const now = new Date()
+  const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
   const currentStats = trends
     .map((trend) => {
-      const latest = trend.data[trend.data.length - 1]
+      // Find today's data point (client timezone), fallback to latest
+      const todayData = trend.data.find(d => d.date === todayLocal)
+      const latest = todayData || trend.data[trend.data.length - 1]
       return {
         user_id: trend.user_id,
         display_name: trend.display_name,
