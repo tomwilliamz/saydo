@@ -75,7 +75,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: scheduleError.message }, { status: 500 })
   }
 
-  // Also get family activities for families this user belongs to
+  // Also get family activities that cascade to everyone (user_id = NULL in schedule)
   const { data: familyMemberships } = await supabase
     .from('family_members')
     .select('family_id')
@@ -83,9 +83,9 @@ export async function GET(request: Request) {
 
   const familyIds = familyMemberships?.map((m) => m.family_id) || []
 
-  let familyScheduleData: Array<{ activity: Activity }> = []
+  let familyActivitySchedule: Array<{ activity: Activity }> = []
   if (familyIds.length > 0) {
-    // Get family activities scheduled for this user on this day
+    // Get family activities with user_id = NULL (cascade to all family members)
     const { data: familySchedule } = await supabase
       .from('schedule')
       .select(
@@ -94,16 +94,16 @@ export async function GET(request: Request) {
         activity:activities!inner(*)
       `
       )
-      .eq('user_id', targetUserId)
+      .is('user_id', null)
       .eq('week_of_cycle', weekOfCycle)
       .eq('day_of_week', dayOfWeek)
       .in('activity.family_id', familyIds)
 
-    familyScheduleData = (familySchedule || []) as Array<{ activity: Activity }>
+    familyActivitySchedule = (familySchedule || []) as Array<{ activity: Activity }>
   }
 
-  // Combine personal and family schedules (they're already both in scheduleData due to how schedule table works)
-  const allScheduleData = [...(scheduleData || [])]
+  // Combine personal schedules and cascading family activities
+  const allScheduleData = [...(scheduleData || []), ...familyActivitySchedule]
 
   // Get completions for this date and user
   const { data: completions, error: completionsError } = await supabase

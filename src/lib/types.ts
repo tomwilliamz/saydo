@@ -2,6 +2,14 @@ export type ActivityType = 'Home' | 'Brain' | 'Body' | 'Downtime'
 
 export type CompletionStatus = 'started' | 'stopped' | 'done' | 'skipped'
 
+// Repeat pattern for activities
+// null = manual (no auto-scheduling)
+// 'daily' = every day (Mon-Sun)
+// 'weekdays' = Mon-Fri
+// 'weekends' = Sat-Sun
+// '0,2,4' = specific days (comma-separated indices where 0=Mon, 6=Sun)
+export type RepeatPattern = 'daily' | 'weekdays' | 'weekends' | string | null
+
 // ============================================
 // User & Family Types
 // ============================================
@@ -49,6 +57,8 @@ export interface Activity {
   user_id: string | null // NULL for family activities
   family_id: string | null // NULL for personal activities
   is_active: boolean
+  is_rota: boolean // true = rotating family chore, false = personal activity
+  repeat_pattern: RepeatPattern // null = manual, 'daily', 'weekdays', 'weekends', or '0,2,4' for specific days
   created_at: string
   // Computed/joined
   owner_type?: 'personal' | 'family'
@@ -181,6 +191,34 @@ export const DEFAULT_USER_COLORS = [
 // Get color for user based on index (consistent across app)
 export function getUserColor(index: number) {
   return DEFAULT_USER_COLORS[index % DEFAULT_USER_COLORS.length]
+}
+
+// Convert repeat pattern to array of day indices (0=Mon, 6=Sun)
+export function getRepeatDays(pattern: RepeatPattern): number[] {
+  if (!pattern) return []
+  if (pattern === 'daily') return [0, 1, 2, 3, 4, 5, 6]
+  if (pattern === 'weekdays') return [0, 1, 2, 3, 4]
+  if (pattern === 'weekends') return [5, 6]
+  // Custom pattern like '0,2,4' for Mon/Wed/Fri
+  return pattern.split(',').map((d) => parseInt(d.trim(), 10)).filter((d) => !isNaN(d) && d >= 0 && d <= 6)
+}
+
+// Convert day indices to repeat pattern string
+export function daysToRepeatPattern(days: number[]): RepeatPattern {
+  if (days.length === 0) return null
+  const sorted = [...days].sort((a, b) => a - b)
+  if (sorted.length === 7) return 'daily'
+  if (sorted.length === 5 && sorted.join(',') === '0,1,2,3,4') return 'weekdays'
+  if (sorted.length === 2 && sorted.join(',') === '5,6') return 'weekends'
+  return sorted.join(',')
+}
+
+// Labels for repeat patterns
+export const REPEAT_PATTERN_LABELS: Record<string, string> = {
+  '': 'Manual',
+  'daily': 'Daily',
+  'weekdays': 'Weekdays',
+  'weekends': 'Weekends',
 }
 
 // ============================================

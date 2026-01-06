@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { User, Family, getUserColor } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import ScheduleGrid from '@/components/ScheduleGrid'
 
 interface FamilyWithMembers extends Family {
   members: { user_id: string; user: User }[]
@@ -41,6 +42,7 @@ export default function AdminPage() {
   const [newUserCycleWeeks, setNewUserCycleWeeks] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [activeScheduleTab, setActiveScheduleTab] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -306,7 +308,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="w-full px-6 py-4 flex items-center justify-between">
           <Link href="/" className="text-gray-400 hover:text-white transition-colors">
             &larr; Back to Home
           </Link>
@@ -315,7 +317,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+      <div className="w-full px-6 py-8 space-y-8">
         {/* Status messages */}
         {error && (
           <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl">
@@ -507,7 +509,7 @@ export default function AdminPage() {
           </section>
         )}
 
-        {/* Schedule Coming Soon */}
+        {/* Schedule Grid */}
         <section
           className="rounded-2xl p-6"
           style={{
@@ -516,9 +518,53 @@ export default function AdminPage() {
           }}
         >
           <h2 className="text-lg font-semibold text-white mb-4">Schedule Grid</h2>
-          <p className="text-gray-400 text-center py-8">
-            Schedule management is being updated. Check back soon!
-          </p>
+
+          {families.length === 0 ? (
+            <p className="text-gray-400 text-center py-8">
+              Join or create a family to manage schedules.
+            </p>
+          ) : (
+            <>
+              {/* Tabs */}
+              <div className="flex gap-2 mb-6 border-b border-gray-700 pb-2 overflow-x-auto">
+                {families.map((family) => (
+                  <button
+                    key={family.id}
+                    onClick={() => setActiveScheduleTab(family.id)}
+                    className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                      activeScheduleTab === family.id
+                        ? 'bg-gray-700 text-white'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    {family.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* Active tab content */}
+              {families.map((family) => {
+                if (activeScheduleTab !== family.id) return null
+                return (
+                  <ScheduleGrid
+                    key={family.id}
+                    currentUser={currentUser!}
+                    familyId={family.id}
+                    members={family.members}
+                  />
+                )
+              })}
+
+              {/* Default to first family if no tab selected */}
+              {!activeScheduleTab && families.length > 0 && (
+                <ScheduleGrid
+                  currentUser={currentUser!}
+                  familyId={families[0].id}
+                  members={families[0].members}
+                />
+              )}
+            </>
+          )}
         </section>
       </div>
 
