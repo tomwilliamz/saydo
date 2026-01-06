@@ -3,9 +3,6 @@
 import { usePathname } from 'next/navigation'
 import Nav from './Nav'
 
-// Person routes that have their own immersive header
-const PERSON_ROUTES = ['/thomas', '/ivor', '/axel']
-
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
@@ -14,7 +11,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth') ||
     pathname === '/' ||
-    PERSON_ROUTES.some((route) => pathname.startsWith(route))
+    pathname.startsWith('/person/')
 
   return (
     <>
