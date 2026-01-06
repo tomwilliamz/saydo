@@ -8,7 +8,7 @@ import confetti from 'canvas-confetti'
 import TaskRow from '@/components/TaskRow'
 import DurationModal from '@/components/DurationModal'
 import LongTermTaskList from '@/components/LongTermTaskList'
-import { DailyTask, User, getUserColor } from '@/lib/types'
+import { DailyTask, User, getUserColorById } from '@/lib/types'
 import { formatDateForDB, getTomorrow, getYesterday, isPast, isToday, parseDate } from '@/lib/utils'
 
 interface DailyResponse {
@@ -69,9 +69,8 @@ export default function PersonPage() {
     fetchTasks(currentDate)
   }, [currentDate, fetchTasks])
 
-  // Get user color based on a stable index (use first 8 chars of UUID as seed)
-  const colorIndex = user?.id ? parseInt(user.id.substring(0, 8), 16) % 6 : 0
-  const colors = getUserColor(colorIndex)
+  // Get user color based on their ID
+  const colors = user?.id ? getUserColorById(user.id) : getUserColorById('default')
 
   const handleDateChange = (newDate: Date) => {
     setCurrentDate(newDate)
@@ -381,12 +380,6 @@ export default function PersonPage() {
   const isPastDate = isPast(currentDate)
   const percentage = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
 
-  // Compute gradient colors from the color object
-  const gradientColors = {
-    main: colors.bg.replace('bg-', '').replace('-500', ''),
-    gradient: [colors.bg.replace('bg-', '#').replace('-500', ''), colors.bg.replace('bg-', '#').replace('-500', '')],
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Animated background particles */}
@@ -398,7 +391,7 @@ export default function PersonPage() {
       {/* Sticky header with user name and date nav */}
       <div className="sticky top-0 z-30">
         {/* User header */}
-        <div className={`text-white px-6 py-3 pb-6 relative overflow-hidden bg-gradient-to-r ${colors.gradient}`}>
+        <div className={`text-white px-6 py-3 pb-8 relative overflow-hidden bg-gradient-to-br ${colors.gradient}`}>
           <div className="max-w-5xl mx-auto relative z-10">
             {/* Top row: Switch person, Trends/Admin */}
             <div className="flex items-center justify-between mb-1">
@@ -480,8 +473,8 @@ export default function PersonPage() {
         </div>
 
         {/* Date navigation */}
-        <div className={`px-6 rounded-t-[20%] relative -mt-2 bg-gradient-to-r ${colors.gradient}`}>
-          <div className="max-w-5xl mx-auto py-2 flex items-center justify-center gap-4">
+        <div className={`px-6 relative ${colors.bg}`}>
+          <div className="max-w-5xl mx-auto py-3 flex items-center justify-center gap-4">
             {activeView === 'daily' && (
               <>
                 <button onClick={() => handleDateChange(getYesterday(currentDate))} className="text-white/70 hover:text-white transition-colors px-3 py-1 text-xl">
@@ -510,11 +503,18 @@ export default function PersonPage() {
               />
             </div>
           )}
+          {/* Curved bottom edge */}
+          <svg className="absolute -bottom-6 left-0 right-0 w-full h-6" viewBox="0 0 1440 24" preserveAspectRatio="none">
+            <path
+              d="M0,0 L1440,0 L1440,0 C960,24 480,24 0,0 Z"
+              style={{ fill: `rgb(${colors.rgb})` }}
+            />
+          </svg>
         </div>
       </div>
 
       {/* Task list */}
-      <div className="flex-1 pb-12 relative z-0">
+      <div className="flex-1 pb-12 relative z-0 pt-4">
         <div className="max-w-5xl mx-auto py-4 px-6">
           {activeView === 'daily' ? (
             // Daily tasks view

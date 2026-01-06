@@ -195,6 +195,17 @@ export function getUserColor(index: number) {
   return DEFAULT_USER_COLORS[index % DEFAULT_USER_COLORS.length]
 }
 
+// Get stable color index from user ID (consistent across the app)
+export function getUserColorIndex(userId: string): number {
+  return parseInt(userId.substring(0, 8), 16) % DEFAULT_USER_COLORS.length
+}
+
+// Get color for user by their ID (preferred - ensures consistency)
+export function getUserColorById(userId: string) {
+  const index = getUserColorIndex(userId)
+  return DEFAULT_USER_COLORS[index]
+}
+
 // Convert repeat pattern to array of day indices (0=Mon, 6=Sun)
 export function getRepeatDays(pattern: RepeatPattern): number[] {
   if (!pattern) return []

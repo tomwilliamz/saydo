@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
-import { User, ActivityType, getUserColor, DEFAULT_USER_COLORS } from '@/lib/types'
+import { User, ActivityType, getUserColorById } from '@/lib/types'
 import SendAlertModal from '@/components/SendAlertModal'
 import LongTermTaskForm from '@/components/LongTermTaskForm'
 
@@ -25,15 +25,13 @@ const PERIOD_LABELS: Record<TimePeriod, string> = {
 
 function UserAvatar({
   user,
-  index,
   size = 'large',
 }: {
   user: User
-  index: number
   size?: 'large' | 'small'
 }) {
   const [hasError, setHasError] = useState(false)
-  const colors = getUserColor(index)
+  const colors = getUserColorById(user.id)
 
   const sizeClasses = size === 'large' ? 'w-32 h-32 text-4xl' : 'w-10 h-10 text-lg'
 
@@ -82,12 +80,12 @@ function getMedalEmoji(rank: number): string {
   }
 }
 
-function ProgressBar({ progress, rank, index }: { progress: UserProgress; rank: number; index: number }) {
-  const colors = getUserColor(index)
+function ProgressBar({ progress, rank }: { progress: UserProgress; rank: number }) {
+  const colors = getUserColorById(progress.user.id)
 
   return (
     <Link href={`/person/${progress.user.id}`} className="flex items-center gap-3 w-full hover:scale-105 transition-all duration-300 group">
-      <UserAvatar user={progress.user} index={index} size="small" />
+      <UserAvatar user={progress.user} size="small" />
       <div className="flex-1 relative h-8 bg-gray-800/50 rounded-full overflow-hidden backdrop-blur-sm">
         <div
           className={`h-full transition-all duration-500 ease-out rounded-full bg-gradient-to-r ${colors.gradient}`}
@@ -293,8 +291,8 @@ export default function HomePage() {
         {/* User cards */}
         {familyMembers.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {familyMembers.map((user, index) => {
-              const colors = getUserColor(index)
+            {familyMembers.map((user) => {
+              const colors = getUserColorById(user.id)
               const isHovered = hoveredUserId === user.id
               return (
                 <Link
@@ -320,7 +318,7 @@ export default function HomePage() {
                   />
 
                   <div className="relative z-10">
-                    <UserAvatar user={user} index={index} />
+                    <UserAvatar user={user} />
                     <div className="text-2xl font-bold text-white mt-4 text-center">{user.display_name}</div>
                   </div>
 
@@ -350,18 +348,18 @@ export default function HomePage() {
             <div className="bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-700 p-6">
               <h2 className="text-xl font-bold text-white mb-4 text-center">Create Long Term Task for...</h2>
               <div className="grid grid-cols-3 gap-4">
-                {familyMembers.map((user, index) => {
-                  const colors = getUserColor(index)
+                {familyMembers.map((user) => {
+                  const colors = getUserColorById(user.id)
                   return (
                     <button
                       key={user.id}
                       onClick={() => setSelectedUserForTask(user)}
                       className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all hover:scale-105 bg-gradient-to-br ${colors.gradient} bg-opacity-20`}
                       style={{
-                        border: `1px solid rgba(96,165,250,0.2)`,
+                        border: `1px solid rgba(${colors.rgb},0.3)`,
                       }}
                     >
-                      <UserAvatar user={user} index={index} size="small" />
+                      <UserAvatar user={user} size="small" />
                       <span className="text-white font-medium">{user.display_name}</span>
                     </button>
                   )
@@ -407,10 +405,10 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {progressData.map((progress, index) => {
+                {progressData.map((progress) => {
                   const sortedPercentages = [...new Set(progressData.map((p) => p.percentage))].sort((a, b) => b - a)
                   const rank = sortedPercentages.indexOf(progress.percentage) + 1
-                  return <ProgressBar key={progress.user.id} progress={progress} rank={rank} index={index} />
+                  return <ProgressBar key={progress.user.id} progress={progress} rank={rank} />
                 })}
               </div>
             )}

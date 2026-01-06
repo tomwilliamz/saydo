@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
-import { ActivityType, getUserColor } from '@/lib/types'
+import { ActivityType, getUserColorById } from '@/lib/types'
 
 type Granularity = 'day' | 'week'
 
@@ -76,17 +76,18 @@ const TYPE_EMOJIS: Record<ActivityType, string> = {
   Downtime: '🎮',
 }
 
-function getUserChartColors(index: number) {
-  const colors = getUserColor(index)
+function getUserChartColors(userId: string) {
+  const colors = getUserColorById(userId)
+  // Map Tailwind gradient classes to hex colors for charts
   const colorMap: Record<string, { main: string; gradient: string[] }> = {
-    'from-blue-500 to-indigo-600': { main: '#3B82F6', gradient: ['#60A5FA', '#3B82F6', '#4F46E5'] },
-    'from-emerald-500 to-teal-600': { main: '#10B981', gradient: ['#34D399', '#10B981', '#0D9488'] },
-    'from-amber-500 to-orange-600': { main: '#F59E0B', gradient: ['#FBBF24', '#F59E0B', '#EA580C'] },
-    'from-pink-500 to-rose-600': { main: '#EC4899', gradient: ['#F472B6', '#EC4899', '#E11D48'] },
-    'from-purple-500 to-violet-600': { main: '#8B5CF6', gradient: ['#A78BFA', '#8B5CF6', '#7C3AED'] },
-    'from-cyan-500 to-sky-600': { main: '#06B6D4', gradient: ['#22D3EE', '#06B6D4', '#0284C7'] },
+    'from-blue-500 to-blue-700': { main: '#3B82F6', gradient: ['#60A5FA', '#3B82F6', '#1D4ED8'] },
+    'from-green-500 to-green-700': { main: '#22C55E', gradient: ['#4ADE80', '#22C55E', '#15803D'] },
+    'from-orange-500 to-orange-700': { main: '#F97316', gradient: ['#FB923C', '#F97316', '#C2410C'] },
+    'from-purple-500 to-purple-700': { main: '#A855F7', gradient: ['#C084FC', '#A855F7', '#7E22CE'] },
+    'from-pink-500 to-pink-700': { main: '#EC4899', gradient: ['#F472B6', '#EC4899', '#BE185D'] },
+    'from-cyan-500 to-cyan-700': { main: '#06B6D4', gradient: ['#22D3EE', '#06B6D4', '#0E7490'] },
   }
-  return colorMap[colors.gradient] || colorMap['from-blue-500 to-indigo-600']
+  return colorMap[colors.gradient] || { main: `rgb(${colors.rgb})`, gradient: [`rgb(${colors.rgb})`, `rgb(${colors.rgb})`, `rgb(${colors.rgb})`] }
 }
 
 export default function LeaderboardPage() {
@@ -132,7 +133,7 @@ export default function LeaderboardPage() {
       : []
 
   const currentStats = trends
-    .map((trend, index) => {
+    .map((trend) => {
       const latest = trend.data[trend.data.length - 1]
       return {
         user_id: trend.user_id,
@@ -140,7 +141,6 @@ export default function LeaderboardPage() {
         ratio: latest ? Math.round(latest.ratio * 100) : 0,
         done: latest?.done || 0,
         total: latest?.total || 0,
-        colorIndex: index,
       }
     })
     .sort((a, b) => b.ratio - a.ratio)
@@ -189,7 +189,7 @@ export default function LeaderboardPage() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               {currentStats.map((stat, index) => {
-                const chartColors = getUserChartColors(stat.colorIndex)
+                const chartColors = getUserChartColors(stat.user_id)
                 const medals = ['🥇', '🥈', '🥉']
                 return (
                   <Link
@@ -230,8 +230,8 @@ export default function LeaderboardPage() {
               <ResponsiveContainer width="100%" height={400}>
                 <AreaChart data={chartData}>
                   <defs>
-                    {trends.map((trend, index) => {
-                      const chartColors = getUserChartColors(index)
+                    {trends.map((trend) => {
+                      const chartColors = getUserChartColors(trend.user_id)
                       return (
                         <linearGradient key={trend.user_id} id={'gradient-' + trend.user_id} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor={chartColors.gradient[0]} stopOpacity={0.8} />
@@ -245,8 +245,8 @@ export default function LeaderboardPage() {
                   <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.5)" tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 12 }} tickFormatter={(v) => v + '%'} />
                   <Tooltip />
                   <Legend />
-                  {trends.map((trend, index) => {
-                    const chartColors = getUserChartColors(index)
+                  {trends.map((trend) => {
+                    const chartColors = getUserChartColors(trend.user_id)
                     return (
                       <Area
                         key={trend.user_id}
@@ -264,8 +264,8 @@ export default function LeaderboardPage() {
             </div>
 
             <div className="flex justify-center gap-8 mt-6 flex-wrap">
-              {trends.map((trend, index) => {
-                const chartColors = getUserChartColors(index)
+              {trends.map((trend) => {
+                const chartColors = getUserChartColors(trend.user_id)
                 return (
                   <button
                     key={trend.user_id}
@@ -306,8 +306,8 @@ export default function LeaderboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {hoursData.breakdown.map((b, index) => {
-                        const chartColors = getUserChartColors(index)
+                      {hoursData.breakdown.map((b) => {
+                        const chartColors = getUserChartColors(b.user_id)
                         return (
                           <tr key={b.user_id} className="border-t border-gray-700/50">
                             <td className="py-3"><span style={{ color: chartColors.main }}>{b.display_name}</span></td>
@@ -352,8 +352,8 @@ export default function LeaderboardPage() {
                 <div className="rounded-2xl p-6 mt-6" style={{ background: 'linear-gradient(135deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9))', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <h3 className="text-lg font-bold text-white mb-4">Time Distribution</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {hoursData.breakdown.map((b, index) => {
-                      const chartColors = getUserChartColors(index)
+                    {hoursData.breakdown.map((b) => {
+                      const chartColors = getUserChartColors(b.user_id)
                       return (
                         <div key={b.user_id} className="text-center">
                           <h4 className="text-white font-medium mb-2" style={{ color: chartColors.main }}>{b.display_name}</h4>
