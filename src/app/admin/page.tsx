@@ -34,6 +34,7 @@ export default function AdminPage() {
   const [editAvatar, setEditAvatar] = useState('')
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const profileFileInputRef = useRef<HTMLInputElement>(null)
   const [newFamilyName, setNewFamilyName] = useState('')
   const [inviteCode, setInviteCode] = useState('')
   const [newUserEmail, setNewUserEmail] = useState('')
@@ -282,6 +283,65 @@ export default function AdminPage() {
     }
   }
 
+  const handleProfileAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentUser) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Image must be less than 2MB')
+      return
+    }
+
+    setUploading(true)
+    setError(null)
+
+    try {
+      const supabase = createClient()
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${currentUser.id}/${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true })
+
+      if (uploadError) {
+        setError(uploadError.message)
+        return
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName)
+
+      // Update user profile with new avatar
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar_url: publicUrl }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to update profile')
+        return
+      }
+
+      setCurrentUser({ ...currentUser, avatar_url: publicUrl })
+      setSuccess('Profile picture updated!')
+    } catch {
+      setError('Failed to upload image')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleUpdateMember = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingMember) return
@@ -396,11 +456,36 @@ export default function AdminPage() {
           {currentUser && (
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <div
-                  className={`w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold bg-gradient-to-br ${getUserColor(0).gradient}`}
+                <button
+                  type="button"
+                  onClick={() => profileFileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="relative group"
                 >
-                  {currentUser.display_name[0].toUpperCase()}
-                </div>
+                  {currentUser.avatar_url ? (
+                    <img src={currentUser.avatar_url} alt={currentUser.display_name} className="w-16 h-16 rounded-full object-cover" />
+                  ) : (
+                    <div
+                      className={`w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold bg-gradient-to-br ${getUserColor(0).gradient}`}
+                    >
+                      {currentUser.display_name[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {uploading ? (
+                      <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
+                    ) : (
+                      <span className="text-white text-xs">Upload</span>
+                    )}
+                  </div>
+                </button>
+                <input
+                  ref={profileFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfileAvatarUpload}
+                  className="hidden"
+                />
                 <div>
                   <div className="text-white font-medium text-lg">{currentUser.display_name}</div>
                   <div className="text-gray-400 text-sm">{currentUser.email}</div>
