@@ -95,7 +95,7 @@ It's not about perfection—it's about building awareness and gradually improvin
 
 ## License
 
-MIT
+All rights reserved. This code is not licensed for reuse.
 
 ---
 
