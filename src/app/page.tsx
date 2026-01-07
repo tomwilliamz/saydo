@@ -33,7 +33,7 @@ function UserAvatar({
   const [hasError, setHasError] = useState(false)
   const colors = getUserColorById(user.id)
 
-  const sizeClasses = size === 'large' ? 'w-32 h-32 text-4xl' : 'w-10 h-10 text-lg'
+  const sizeClasses = size === 'large' ? 'w-20 h-20 sm:w-32 sm:h-32 text-2xl sm:text-4xl' : 'w-10 h-10 text-lg'
 
   if (hasError || !user.avatar_url) {
     return (
@@ -110,6 +110,8 @@ export default function HomePage() {
   const [showAlertModal, setShowAlertModal] = useState(false)
   const [showLongTermForm, setShowLongTermForm] = useState(false)
   const [selectedUserForTask, setSelectedUserForTask] = useState<User | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   // Fetch family members on mount
   useEffect(() => {
@@ -133,6 +135,7 @@ export default function HomePage() {
         const userData = await userResponse.json()
         if (userData.profile) {
           usersMap.set(userData.profile.id, userData.profile)
+          setCurrentUserId(userData.profile.id)
         }
 
         setFamilyMembers(Array.from(usersMap.values()))
@@ -231,18 +234,18 @@ export default function HomePage() {
       </div>
 
       {/* Header with nav links */}
-      <div className="flex justify-between items-center p-6 relative z-30">
+      <div className="flex justify-between items-center p-4 sm:p-6 relative z-30">
         {/* Alert button - top left */}
         <button
           onClick={() => setShowAlertModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30 hover:from-red-500/30 hover:to-orange-500/30 transition-all hover:scale-105"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30 hover:from-red-500/30 hover:to-orange-500/30 transition-all hover:scale-105"
         >
-          <span className="text-2xl">📢</span>
-          <span className="text-white font-medium">Alert</span>
+          <span className="text-xl sm:text-2xl">📢</span>
+          <span className="text-white font-medium hidden sm:inline">Alert</span>
         </button>
 
-        {/* Right nav */}
-        <div className="flex items-center gap-3">
+        {/* Desktop nav */}
+        <div className="hidden sm:flex items-center gap-3">
           <div className="inline-flex items-center rounded-full bg-gray-800/50 px-4 py-2 backdrop-blur-sm border border-gray-700">
             <Link href="/leaderboard" className="text-gray-400 hover:text-white transition-colors px-3">
               Leaderboard
@@ -271,23 +274,86 @@ export default function HomePage() {
             </svg>
           </Link>
         </div>
+
+        {/* Mobile hamburger menu */}
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="sm:hidden text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-700/50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+            {menuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            )}
+          </svg>
+        </button>
       </div>
 
+      {/* Mobile menu dropdown */}
+      {menuOpen && (
+        <div className="sm:hidden absolute top-16 right-4 z-40 bg-gray-800/95 backdrop-blur-sm rounded-xl border border-gray-700 shadow-xl overflow-hidden">
+          {currentUserId && (
+            <>
+              <Link
+                href={`/person/${currentUserId}`}
+                className="block px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors"
+                onClick={() => setMenuOpen(false)}
+              >
+                Daily
+              </Link>
+              <Link
+                href={`/person/${currentUserId}?view=long-term`}
+                className="block px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors"
+                onClick={() => setMenuOpen(false)}
+              >
+                Long Term
+              </Link>
+            </>
+          )}
+          <Link
+            href="/leaderboard"
+            className="block px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors"
+            onClick={() => setMenuOpen(false)}
+          >
+            Leaderboard
+          </Link>
+          <Link
+            href="/admin"
+            className="block px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors border-t border-gray-700"
+            onClick={() => setMenuOpen(false)}
+          >
+            Settings
+          </Link>
+          <button
+            onClick={async () => {
+              const { createClient } = await import('@/lib/supabase/client')
+              const supabase = createClient()
+              await supabase.auth.signOut()
+              window.location.href = '/login'
+            }}
+            className="block w-full text-left px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors border-t border-gray-700"
+          >
+            Logout
+          </button>
+        </div>
+      )}
+
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 -mt-16 relative z-10">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-8 -mt-16 relative z-10">
         {/* Logo */}
         <div
-          className="rounded-2xl px-12 py-6 mb-12"
+          className="rounded-2xl px-6 sm:px-12 py-4 sm:py-6 mb-8 sm:mb-12"
           style={{
             background: 'linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))',
             boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
             border: '1px solid rgba(255,255,255,0.1)',
           }}
         >
-          <h1 className="text-7xl font-light">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-light">
             <span className="bg-gradient-to-r from-blue-400 via-emerald-400 to-amber-400 bg-clip-text text-transparent">Say</span>
             <span className="font-black bg-gradient-to-r from-amber-400 via-emerald-400 to-blue-400 bg-clip-text text-transparent">Do</span>
-            <span className="text-gray-400 ml-4">Central</span>
+            <span className="text-gray-400 ml-2 sm:ml-4">Central</span>
           </h1>
         </div>
 
@@ -297,7 +363,7 @@ export default function HomePage() {
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent" />
           </div>
         ) : familyMembers.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-8 sm:mb-12 w-full max-w-3xl">
             {familyMembers.map((user) => {
               const colors = getUserColorById(user.id)
               const isHovered = hoveredUserId === user.id
@@ -308,8 +374,8 @@ export default function HomePage() {
                   onMouseEnter={() => setHoveredUserId(user.id)}
                   onMouseLeave={() => setHoveredUserId(null)}
                   className={`relative overflow-hidden flex flex-col items-center justify-center
-                    w-52 h-60 rounded-3xl transition-all duration-300
-                    ${isHovered ? 'scale-110 z-10' : ''}`}
+                    w-full h-40 sm:h-60 rounded-2xl sm:rounded-3xl transition-all duration-300
+                    ${isHovered ? 'scale-105 sm:scale-110 z-10' : ''}`}
                   style={{
                     background: `linear-gradient(135deg, rgba(${colors.rgb},0.15), rgba(${colors.rgb},0.05))`,
                     boxShadow: isHovered ? `0 25px 50px -10px rgba(${colors.rgb},0.5)` : `0 15px 40px -10px rgba(${colors.rgb},0.25)`,
@@ -324,9 +390,9 @@ export default function HomePage() {
                     }}
                   />
 
-                  <div className="relative z-10">
+                  <div className="relative z-10 flex flex-col items-center">
                     <UserAvatar user={user} />
-                    <div className="text-2xl font-bold text-white mt-4 text-center">{user.display_name}</div>
+                    <div className="text-base sm:text-2xl font-bold text-white mt-2 sm:mt-4 text-center">{user.display_name}</div>
                   </div>
 
                   {/* Bottom accent bar */}

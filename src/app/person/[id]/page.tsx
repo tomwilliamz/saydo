@@ -46,6 +46,7 @@ export default function PersonPage() {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [activeView, setActiveView] = useState<'daily' | 'long-term'>('daily')
   const [showAdHocModal, setShowAdHocModal] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const fetchTasks = useCallback(
     async (date: Date) => {
@@ -459,8 +460,106 @@ export default function PersonPage() {
 
       {/* Sticky header with user name and date nav */}
       <div className="sticky top-0 z-30">
-        {/* User header */}
-        <div className={`text-white px-6 py-3 pb-8 relative overflow-hidden bg-gradient-to-br ${colors.gradient}`}>
+        {/* Mobile header - compact */}
+        <div className={`sm:hidden text-white px-4 py-2 ${colors.bg}`}>
+          <div className="flex items-center justify-between">
+            {/* Left: Back + Avatar */}
+            <div className="flex items-center gap-2">
+              <Link href="/" className="text-white/70 hover:text-white transition-colors p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+              </Link>
+              <div className={`w-8 h-8 rounded-full p-0.5 bg-gradient-to-br ${colors.gradient}`}>
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.display_name} className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  <div className={`w-full h-full rounded-full ${colors.bg} flex items-center justify-center text-white text-sm font-bold`}>
+                    {user?.display_name?.[0]?.toUpperCase() || '?'}
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Center: Day of week (large) */}
+            <div className="text-center">
+              <span className="text-2xl font-bold text-white">
+                {activeView === 'long-term' ? 'Long Term' : format(currentDate, 'EEEE')}
+              </span>
+            </div>
+            {/* Right: Percentage + Menu */}
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-white/90">{percentage}%</span>
+              <div className="relative">
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="text-white/70 hover:text-white transition-colors p-1"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                  </svg>
+                </button>
+                {/* Mobile dropdown menu */}
+                {mobileMenuOpen && (
+                  <div className="absolute top-8 right-0 z-50 bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-xl border border-white/10 py-2 min-w-[160px]">
+                    <button
+                      onClick={() => { setActiveView('daily'); setMobileMenuOpen(false); }}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${activeView === 'daily' ? 'text-white font-semibold bg-white/10' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
+                    >
+                      Daily
+                    </button>
+                    <button
+                      onClick={() => { setActiveView('long-term'); setMobileMenuOpen(false); }}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${activeView === 'long-term' ? 'text-white font-semibold bg-white/10' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
+                    >
+                      Long Term
+                    </button>
+                    <div className="border-t border-white/10 my-1" />
+                    <Link
+                      href="/leaderboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      Leaderboard
+                    </Link>
+                    <Link
+                      href="/admin"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      Settings
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile date picker row */}
+        {activeView === 'daily' && (
+          <div className={`sm:hidden px-4 py-2 flex items-center justify-center gap-6 ${colors.bg}`}>
+            <button onClick={() => handleDateChange(getYesterday(currentDate))} className="text-white/70 hover:text-white transition-colors text-xl px-2">
+              &larr;
+            </button>
+            <button onClick={() => setShowDatePicker(!showDatePicker)} className="text-white font-medium text-sm">
+              {format(currentDate, 'MMM d, yyyy')}
+            </button>
+            <button onClick={() => handleDateChange(getTomorrow(currentDate))} className="text-white/70 hover:text-white transition-colors text-xl px-2">
+              &rarr;
+            </button>
+            {!isToday(currentDate) && (
+              <button
+                onClick={() => handleDateChange(new Date())}
+                className="text-xs text-white/70 hover:text-white transition-colors px-2 py-1 rounded bg-black/20"
+              >
+                Today
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Desktop header - full */}
+        <div className={`hidden sm:block text-white px-6 py-3 pb-8 relative overflow-hidden bg-gradient-to-br ${colors.gradient}`}>
           <div className="max-w-5xl mx-auto relative z-10">
             {/* Top row: Switch person, Trends/Admin */}
             <div className="flex items-center justify-between mb-1">
@@ -541,8 +640,8 @@ export default function PersonPage() {
           </div>
         </div>
 
-        {/* Date navigation */}
-        <div className={`px-6 relative ${colors.bg}`}>
+        {/* Desktop date navigation */}
+        <div className={`hidden sm:block px-6 relative ${colors.bg}`}>
           <div className="max-w-5xl mx-auto py-3 flex items-center justify-center gap-4">
             {activeView === 'daily' && (
               <>
@@ -580,11 +679,27 @@ export default function PersonPage() {
             />
           </svg>
         </div>
+
+        {/* Mobile date picker dropdown */}
+        {showDatePicker && activeView === 'daily' && (
+          <div className="sm:hidden absolute top-24 left-1/2 -translate-x-1/2 z-50 rounded-lg shadow-lg p-2 bg-gray-800 border border-gray-700">
+            <input
+              type="date"
+              value={format(currentDate, 'yyyy-MM-dd')}
+              onChange={(e) => {
+                handleDateChange(parseDate(e.target.value))
+                setShowDatePicker(false)
+              }}
+              className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 border-gray-600 text-white"
+              autoFocus
+            />
+          </div>
+        )}
       </div>
 
       {/* Task list */}
-      <div className="flex-1 pb-12 relative z-0 pt-4">
-        <div className="max-w-5xl mx-auto py-4 px-6">
+      <div className="flex-1 pb-12 relative z-0 pt-2 sm:pt-4">
+        <div className="max-w-5xl mx-auto py-2 sm:py-4 px-2 sm:px-6">
           {activeView === 'daily' ? (
             // Daily tasks view
             loading ? (
