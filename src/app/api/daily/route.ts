@@ -126,7 +126,17 @@ export async function GET(request: Request) {
   }
 
   // Combine personal schedules, rota schedules, and family-wide activities
-  const allScheduleData = [...(scheduleData || []), ...familyActivitySchedule]
+  // Deduplicate by activity_id (user-specific entries take priority over family-wide)
+  const combinedSchedule = [...(scheduleData || []), ...familyActivitySchedule]
+  const seenActivityIds = new Set<string>()
+  const allScheduleData = combinedSchedule.filter((s) => {
+    const activityId = (s.activity as Activity).id
+    if (seenActivityIds.has(activityId)) {
+      return false
+    }
+    seenActivityIds.add(activityId)
+    return true
+  })
 
   // Get completions for this date and user
   const { data: completions, error: completionsError } = await supabase
