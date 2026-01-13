@@ -54,84 +54,78 @@ export async function GET(request: Request) {
   }
 
   const targetDate = parseDate(dateParam)
-  const cycleStartDate = parseDate(targetUser.cycle_start_date)
   const dayOfWeek = getDayOfWeek(targetDate)
 
-  // Personal schedules are always week 1
-  const personalWeekOfCycle = 1
-
-  // Get personal schedule for this user (always week 1)
-  const { data: scheduleData, error: scheduleError } = await supabase
-    .from('schedule')
-    .select(
-      `
-      *,
-      activity:activities(*)
-    `
-    )
-    .eq('user_id', targetUserId)
-    .eq('week_of_cycle', personalWeekOfCycle)
-    .eq('day_of_week', dayOfWeek)
-
-  if (scheduleError) {
-    return NextResponse.json({ error: scheduleError.message }, { status: 500 })
-  }
-
-  // Get family memberships with family rota settings
+  // Get family memberships with family rota settings FIRST (needed for rota week calculation)
   const { data: familyMemberships } = await supabase
     .from('family_members')
     .select('family_id, families(rota_cycle_weeks, rota_start_date)')
     .eq('user_id', targetUserId)
 
+  // Calculate the rota week from primary family (for rota activities assigned to this user)
+  const primaryFamilyData = (familyMemberships?.[0]?.families as { rota_cycle_weeks?: number; rota_start_date?: string }) || {}
+  const rotaCycleWeeks = primaryFamilyData.rota_cycle_weeks || 4
+  const rotaStartDate = primaryFamilyData.rota_start_date ? parseDate(primaryFamilyData.rota_start_date) : parseDate('2025-01-06')
+  const rotaWeekOfCycle = getWeekOfCycle(targetDate, rotaStartDate, rotaCycleWeeks)
+
+  // Personal (non-rota) schedules always use week 1
+  const personalWeekOfCycle = 1
+
+  // Get personal schedule for this user - non-rota activities (week 1)
+  const { data: personalScheduleData, error: personalError } = await supabase
+    .from('schedule')
+    .select(`*, activity:activities!inner(*)`)
+    .eq('user_id', targetUserId)
+    .eq('week_of_cycle', personalWeekOfCycle)
+    .eq('day_of_week', dayOfWeek)
+    .eq('activity.is_rota', false)
+
+  if (personalError) {
+    return NextResponse.json({ error: personalError.message }, { status: 500 })
+  }
+
+  // Get rota schedule for this user - rota activities use family's calculated week
+  const { data: rotaScheduleData, error: rotaError } = await supabase
+    .from('schedule')
+    .select(`*, activity:activities!inner(*)`)
+    .eq('user_id', targetUserId)
+    .eq('week_of_cycle', rotaWeekOfCycle)
+    .eq('day_of_week', dayOfWeek)
+    .eq('activity.is_rota', true)
+
+  if (rotaError) {
+    return NextResponse.json({ error: rotaError.message }, { status: 500 })
+  }
+
+  // Combine personal and rota schedules
+  const scheduleData = [...(personalScheduleData || []), ...(rotaScheduleData || [])]
+
   let familyActivitySchedule: Array<{ activity: Activity }> = []
 
-  // For each family, calculate the correct week based on that family's rota settings
+  // For each family, also get family-wide activities (user_id = NULL)
   for (const membership of familyMemberships || []) {
     const familyId = membership.family_id
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const familyData = membership.families as any
-    const rotaCycleWeeks = familyData?.rota_cycle_weeks || 4
-    const rotaStartDate = familyData?.rota_start_date ? parseDate(familyData.rota_start_date) : parseDate('2025-01-06')
-
-    // Calculate week of cycle for this family's rota using family's start date
-    const familyWeekOfCycle = getWeekOfCycle(targetDate, rotaStartDate, rotaCycleWeeks)
-
-    console.log('Family query:', { familyId, rotaCycleWeeks, familyWeekOfCycle, dayOfWeek, targetDate: dateParam })
-
-    // Debug: Get ALL family schedules to see what exists
-    const { data: allFamilySchedule } = await supabase
-      .from('schedule')
-      .select('*, activity:activities!inner(name, family_id)')
-      .is('user_id', null)
-      .eq('activity.family_id', familyId)
-    console.log('All family schedules:', allFamilySchedule?.map(s => ({
-      activity: (s.activity as {name: string}).name,
-      day: s.day_of_week,
-      week: s.week_of_cycle
-    })))
+    const famRotaCycleWeeks = familyData?.rota_cycle_weeks || 4
+    const famRotaStartDate = familyData?.rota_start_date ? parseDate(familyData.rota_start_date) : parseDate('2025-01-06')
+    const familyWeekOfCycle = getWeekOfCycle(targetDate, famRotaStartDate, famRotaCycleWeeks)
 
     // Get family activities with user_id = NULL (cascade to all family members)
-    const { data: familySchedule, error: familyError } = await supabase
+    const { data: familySchedule } = await supabase
       .from('schedule')
-      .select(
-        `
-        *,
-        activity:activities!inner(*)
-      `
-      )
+      .select(`*, activity:activities!inner(*)`)
       .is('user_id', null)
       .eq('week_of_cycle', familyWeekOfCycle)
       .eq('day_of_week', dayOfWeek)
       .eq('activity.family_id', familyId)
-
-    console.log('Family schedule result:', { count: familySchedule?.length, error: familyError, data: familySchedule })
 
     if (familySchedule) {
       familyActivitySchedule.push(...(familySchedule as Array<{ activity: Activity }>))
     }
   }
 
-  // Combine personal schedules and cascading family activities
+  // Combine personal schedules, rota schedules, and family-wide activities
   const allScheduleData = [...(scheduleData || []), ...familyActivitySchedule]
 
   // Get completions for this date and user
@@ -241,15 +235,9 @@ export async function GET(request: Request) {
     return a.activity.name.localeCompare(b.activity.name)
   })
 
-  // Get primary family's week for display (use first family or default to 1)
-  const primaryFamilyData = (familyMemberships?.[0]?.families as { rota_cycle_weeks?: number; rota_start_date?: string }) || {}
-  const primaryRotaCycleWeeks = primaryFamilyData.rota_cycle_weeks || 4
-  const primaryRotaStartDate = primaryFamilyData.rota_start_date ? parseDate(primaryFamilyData.rota_start_date) : parseDate('2025-01-06')
-  const displayWeekOfCycle = getWeekOfCycle(targetDate, primaryRotaStartDate, primaryRotaCycleWeeks)
-
   return NextResponse.json({
     date: dateParam,
-    weekOfCycle: displayWeekOfCycle,
+    weekOfCycle: rotaWeekOfCycle,
     dayOfWeek,
     tasks,
     user: targetUser,
