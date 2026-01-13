@@ -4,16 +4,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function Nav() {
   const pathname = usePathname()
-  const router = useRouter()
   const supabase = createClient()
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/login')
+    window.location.href = '/login'
   }
 
   const navItems = [
