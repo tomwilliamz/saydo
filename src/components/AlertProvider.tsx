@@ -39,31 +39,54 @@ export default function AlertProvider({ children }: AlertProviderProps) {
   const [activeAlert, setActiveAlert] = useState<Alert | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [hasProfile, setHasProfile] = useState(false)
 
   // FCM hook for push notifications
   const { permissionStatus, requestPermission } = useFcm(deviceId)
 
-  // Check authentication status first
+  // Check authentication and profile status first
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthAndProfile = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       setIsAuthenticated(!!user)
+
+      if (user) {
+        // Check if user has a profile (completed onboarding)
+        const { data: profile } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', user.id)
+          .single()
+        setHasProfile(!!profile)
+      } else {
+        setHasProfile(false)
+      }
     }
-    checkAuth()
+    checkAuthAndProfile()
 
     // Listen for auth changes
     const supabase = createClient()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setIsAuthenticated(!!session?.user)
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', session.user.id)
+          .single()
+        setHasProfile(!!profile)
+      } else {
+        setHasProfile(false)
+      }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  // Initialize device from localStorage (only after authenticated)
+  // Initialize device from localStorage (only after authenticated AND has profile)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !hasProfile) {
       setIsInitialized(true)
       return
     }
@@ -91,7 +114,7 @@ export default function AlertProvider({ children }: AlertProviderProps) {
       setShowDeviceSetup(true)
     }
     setIsInitialized(true)
-  }, [isAuthenticated])
+  }, [isAuthenticated, hasProfile])
 
   // Heartbeat to update last_active_at
   useEffect(() => {
@@ -238,8 +261,8 @@ export default function AlertProvider({ children }: AlertProviderProps) {
     >
       {children}
 
-      {/* Device setup modal - only show when authenticated */}
-      {showDeviceSetup && isAuthenticated && (
+      {/* Device setup modal - only show when authenticated AND has completed onboarding */}
+      {showDeviceSetup && isAuthenticated && hasProfile && (
         <DeviceSetup onComplete={handleDeviceSetupComplete} />
       )}
 

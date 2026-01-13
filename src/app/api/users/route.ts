@@ -70,35 +70,24 @@ export async function POST(request: Request) {
   }
 
   // Check if there's a pre-created user with this email (created by admin)
-  const { data: preCreatedUser } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', user.email!.toLowerCase())
-    .single()
+  // Use RPC function to bypass RLS since the new user can't read other users yet
+  const { data: preCreatedUsers } = await supabase.rpc('find_precreated_user_by_email', {
+    p_email: user.email!,
+  })
 
-  if (preCreatedUser) {
-    // Update the pre-created user's id to the actual auth user id
-    const oldId = preCreatedUser.id
-    const { data: profile, error } = await supabase
-      .from('users')
-      .update({ id: user.id })
-      .eq('id', oldId)
-      .select()
-      .single()
+  const preCreatedUser = preCreatedUsers?.[0]
+
+  if (preCreatedUser && preCreatedUser.id !== user.id) {
+    // Associate the pre-created user with this auth user using RPC
+    const { data: associatedUsers, error } = await supabase.rpc('associate_precreated_user', {
+      p_old_id: preCreatedUser.id,
+    })
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Also update any family_members references
-    await supabase.from('family_members').update({ user_id: user.id }).eq('user_id', oldId)
-
-    // Update any other tables that reference this user
-    await supabase.from('schedule').update({ user_id: user.id }).eq('user_id', oldId)
-    await supabase.from('completions').update({ user_id: user.id }).eq('user_id', oldId)
-    await supabase.from('long_term_tasks').update({ user_id: user.id }).eq('user_id', oldId)
-    await supabase.from('activities').update({ user_id: user.id }).eq('user_id', oldId)
-
+    const profile = associatedUsers?.[0]
     return NextResponse.json({ profile, associated: true })
   }
 
